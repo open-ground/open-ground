@@ -1,0 +1,2 @@
+io.github.openground.common.security.config.SecurityAutoConfiguration
+io.github.openground.common.security.config.TokenFilterAutoConfiguration

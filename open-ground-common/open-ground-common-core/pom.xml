@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-common</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-common-core</artifactId>
+    <packaging>jar</packaging>
+    <name>Open Ground Common Core</name>
+    <description>Open Ground Common Core — 操作日志 AOP 切面与 Spring Boot 自动配置</description>
+
+    <dependencies>
+        <!-- Common API（SPI 接口、注解） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-common-api</artifactId>
+        </dependency>
+
+        <!-- Base 工具层（加解密、请求工具） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-base</artifactId>
+        </dependency>
+
+        <!-- Spring Boot AOP（@Aspect 切面） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Spring Web（RequestContextHolder） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+
+        <!-- Fastjson（参数序列化） -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+        </dependency>
+
+        <!-- Jakarta Servlet API（HttpServletRequest） -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- SLF4J -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- JDBC（JdbcSequenceProvider） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Hutool（Snowflake 工具依赖） -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+
+        <!-- AWS S3 OSS -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

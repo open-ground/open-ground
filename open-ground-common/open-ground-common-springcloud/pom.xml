@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-common</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-common-springcloud</artifactId>
+    <packaging>jar</packaging>
+    <name>Open Ground Common SpringCloud</name>
+    <description>Open Ground Common SpringCloud — 基于 Feign 的操作日志 SPI 实现</description>
+
+    <dependencies>
+        <!-- Security API（TokenStore、SessionEntity 接口） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-security-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-common-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-base</artifactId>
+        </dependency>
+
+        <!-- Common Core（CommonRequestFilter、TokenCheckService） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-common-core</artifactId>
+        </dependency>
+
+        <!-- Jakarta Servlet API（HttpServletRequest） -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- OpenFeign -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-okhttp</artifactId>
+        </dependency>
+
+        <!-- Nacos -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>httpclient</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

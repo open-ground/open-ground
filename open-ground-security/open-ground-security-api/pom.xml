@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-security</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-security-api</artifactId>
+    <packaging>jar</packaging>
+    <name>Open Ground Security API</name>
+    <description>Open Ground Security API — 认证安全接口定义（UserDetailsService、TokenStore、ApiKeyService 等）</description>
+
+    <dependencies>
+        <!-- open-ground-base（CommonException、ErrorCode、StringUtils 等） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-base</artifactId>
+        </dependency>
+
+        <!-- Spring Boot AutoConfigure（ConditionalOnProperty 等注解） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Jackson（JSON 序列化） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

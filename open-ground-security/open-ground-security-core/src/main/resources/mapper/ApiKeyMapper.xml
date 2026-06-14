@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.common.security.mapper.ApiKeyMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.common.security.ApiKeyDO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="username" property="username"/>
+        <result column="api_key" property="apiKey"/>
+        <result column="name" property="name"/>
+        <result column="status" property="status"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="last_used_time" property="lastUsedTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, username, api_key, name, status, expire_time, last_used_time, create_time, update_time, create_by, update_by
+    </sql>
+
+    <!-- 根据 API Key 查找 -->
+    <select id="findByApiKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_api_key
+        WHERE api_key = #{apiKey} AND status = 1
+    </select>
+
+    <!-- 根据 ID 查找 -->
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_api_key
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户名查找所有 API Key -->
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_api_key
+        WHERE username = #{username}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 保存 API Key -->
+    <insert id="save" parameterType="io.github.openground.common.security.ApiKeyDO">
+        INSERT INTO sys_api_key (id, user_id, username, api_key, name, status, expire_time, last_used_time, create_time, update_time, create_by, update_by)
+        VALUES (#{id}, #{userId}, #{username}, #{apiKey}, #{name}, #{status}, #{expireTime}, #{lastUsedTime}, #{createTime}, #{updateTime}, #{createBy}, #{updateBy})
+    </insert>
+
+    <!-- 更新 API Key -->
+    <update id="update" parameterType="io.github.openground.common.security.ApiKeyDO">
+        UPDATE sys_api_key
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="lastUsedTime != null">last_used_time = #{lastUsedTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据 ID 删除 API Key -->
+    <delete id="deleteById">
+        DELETE FROM sys_api_key WHERE id = #{id}
+    </delete>
+
+    <!-- 根据用户名删除所有 API Key -->
+    <delete id="deleteByUsername">
+        DELETE FROM sys_api_key WHERE username = #{username}
+    </delete>
+
+</mapper>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-security</artifactId>
+    <packaging>pom</packaging>
+    <name>Open Ground Security</name>
+    <description>Open Ground Security 聚合模块 — 认证安全组件</description>
+
+    <modules>
+        <module>open-ground-security-api</module>
+        <module>open-ground-security-core</module>
+        <module>open-ground-security-springboot-starter</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-security-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-security-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-security-springboot-starter</artifactId>
+                <version>${revision}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

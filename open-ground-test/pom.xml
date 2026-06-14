@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-test</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Open Ground Test</name>
+    <description>Open Ground 测试模块 —— 模拟业务模块使用 open-ground 框架，覆盖全部组件测试</description>
+
+    <properties>
+        <!-- 不发布到 Maven 仓库 -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <!-- ==================== Open Ground 框架（模拟业务模块的依赖方式） ==================== -->
+        <!-- starter：base + common-core + Spring Boot 全套基础设施（Web/Undertow/MyBatis/Druid/MySQL/Redis/JJWT/工具库/测试框架...） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-starter</artifactId>
+            <version>${revision}</version>
+            <type>pom</type>
+        </dependency>
+        <!-- security-starter：TokenManager / TokenStore / ApiKeyService 等安全组件 -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-security-springboot-starter</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- ==================== 测试 ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

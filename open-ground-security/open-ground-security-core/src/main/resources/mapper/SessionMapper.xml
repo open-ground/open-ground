@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.common.security.mapper.SessionMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.common.security.SessionEntity">
+        <id column="id" property="id"/>
+        <result column="session_data" property="sessionData"/>
+        <result column="token" property="token"/>
+        <result column="username" property="username"/>
+        <result column="grant_type" property="grantType"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_access_time" property="lastAccessTime"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="host" property="host"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, session_data, token, username, grant_type, create_time, last_access_time, expire_time, host
+    </sql>
+
+    <!-- 根据 Token 查找会话 -->
+    <select id="findByToken" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_session
+        WHERE token = #{token}
+    </select>
+
+    <!-- 根据 ID 查找会话 -->
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_session
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户名查找会话 -->
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_session
+        WHERE username = #{username}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 保存会话 -->
+    <insert id="save" parameterType="io.github.openground.common.security.SessionEntity">
+        INSERT INTO sys_session (id, session_data, token, username, grant_type, create_time, last_access_time, expire_time, host)
+        VALUES (#{id}, #{sessionData}, #{token}, #{username}, #{grantType}, #{createTime}, #{lastAccessTime}, #{expireTime}, #{host})
+    </insert>
+
+    <!-- 更新会话 -->
+    <update id="update" parameterType="io.github.openground.common.security.SessionEntity">
+        UPDATE sys_session
+        <set>
+            <if test="sessionData != null">session_data = #{sessionData},</if>
+            <if test="lastAccessTime != null">last_access_time = #{lastAccessTime},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="host != null">host = #{host},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据 ID 删除会话 -->
+    <delete id="deleteById">
+        DELETE FROM sys_session WHERE id = #{id}
+    </delete>
+
+    <!-- 根据用户名删除所有会话 -->
+    <delete id="deleteByUsername">
+        DELETE FROM sys_session WHERE username = #{username}
+    </delete>
+
+    <!-- 清理过期会话 -->
+    <delete id="cleanExpired">
+        DELETE FROM sys_session WHERE expire_time &lt; NOW()
+    </delete>
+
+</mapper>
