@@ -22,26 +22,10 @@
             <artifactId>open-ground-security-api</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>io.github.open-ground</groupId>
-            <artifactId>open-ground-common-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.open-ground</groupId>
-            <artifactId>open-ground-base</artifactId>
-        </dependency>
-
-        <!-- Common Core（CommonRequestFilter、TokenCheckService） -->
+        <!-- Common Core（传递 common-api、base、servlet-api、slf4j 等） -->
         <dependency>
             <groupId>io.github.open-ground</groupId>
             <artifactId>open-ground-common-core</artifactId>
-        </dependency>
-
-        <!-- Jakarta Servlet API（HttpServletRequest） -->
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- OpenFeign -->
@@ -77,15 +61,11 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
     </dependencies>
 </project>

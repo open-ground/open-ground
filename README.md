@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 ![JDK](https://img.shields.io/badge/JDK-17+-green)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.4-green)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2024.0.1-green)
 
 ---
 
@@ -13,7 +14,7 @@
 
 ```
 open-ground (pom)
-├── open-ground-dependency (pom)      — BOM，统一依赖版本管理
+├── open-ground-dependency (pom)      — BOM，统一依赖版本管理（含 Spring Boot / Spring Cloud / Spring Cloud Alibaba）
 ├── open-ground-base (jar)            — 核心 DTO、异常、工具类
 ├── open-ground-common (pom)          — 功能模块聚合
 │   ├── open-ground-common-api (jar)           — SPI 接口、注解、枚举、DTO（零 Spring 依赖）
@@ -23,7 +24,12 @@ open-ground (pom)
 │   ├── open-ground-security-api (jar)         — 认证 SPI 接口定义（零 Spring 依赖）
 │   ├── open-ground-security-core (jar)        — Token 管理、会话存储、API Key、鉴权过滤器
 │   └── open-ground-security-springboot-starter (jar) — 自动配置 Starter
-└── open-ground-starter (pom)         — 一键引入 BOM，聚合全部依赖
+├── open-ground-starter (pom)         — 分层 Starter 聚合（按需引入）
+│   ├── open-ground-starter-base (pom)         — 基础 Starter：Web + MyBatis + Redis + 工具库
+│   ├── open-ground-starter-common (pom)       — 公共组件 Starter：+ 操作日志 / OSS / EasyExcel / JSqlParser
+│   ├── open-ground-starter-security (pom)     — 安全 Starter：+ Token / ApiKey / 会话管理
+│   ├── open-ground-starter-springcloud (pom)  — 微服务 Starter：+ Nacos / Feign / LoadBalancer
+│   └── open-ground-starter-all (pom)          — 全量 Starter：一键引入所有模块
 ```
 
 ### open-ground-base
@@ -63,24 +69,71 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 - `FeignSequenceProvider` — 远程获取序列号
 - `FeignLogSender` — 远程保存操作日志
 
-### open-ground-starter
+### open-ground-starter-base
 
-一键引入 BOM，聚合以下依赖：
+基础 Starter，适用于只需要核心 DTO + Web + 数据库的项目：
 
-- Open Ground 自身模块（base + common-core）
-- Spring Boot：web（Undertow）、aop、data-redis、configuration-processor
-- Spring Cloud：loadbalancer
+- Open Ground 自身模块：`open-ground-base`
+- Spring Boot：Web（Undertow）、AOP、Data Redis、Configuration Processor
 - 数据库：MyBatis、Druid、MySQL、PageHelper
-- 安全：JJWT、Spring Security Crypto、Jasypt
 - API 文档：SpringDoc OpenAPI
-- 工具：Lombok、Fastjson、Hutool、Guava、Commons、EasyExcel、Gson、JSqlParser、Dom4j、UserAgentUtils
-- 日志：Logback
+- 安全/Token：JJWT、Spring Security Crypto
+- 工具：Lombok、Commons Lang3、Guava
+- 日志：Logback Classic
+
+### open-ground-starter-common
+
+公共组件 Starter，在 base 基础上增加完整功能模块：
+
+- 继承：`open-ground-starter-base` 全部依赖
+- Open Ground 公共组件：`open-ground-common-api` + `open-ground-common-core`
+- JDBC（JdbcSequenceProvider 需要）
 - 对象存储：AWS S3 SDK
+- 数据处理：EasyExcel
+- 配置加密：Jasypt
 - HTTP Client：HttpClient5
+- 工具库：Dom4j、UserAgentUtils、JSqlParser
+
+### open-ground-starter-security
+
+安全 Starter，在 common 基础上增加完整认证能力：
+
+- 继承：`open-ground-starter-common` 全部依赖
+- Open Ground 安全模块：`open-ground-security-api` + `open-ground-security-core` + `open-ground-security-springboot-starter`
+
+### open-ground-starter-springcloud
+
+微服务 Starter，在 security 基础上增加微服务基础设施：
+
+- 继承：`open-ground-starter-security` 全部依赖
+- Open Ground 微服务模块：`open-ground-common-springcloud`
+- 服务注册/配置：Nacos Discovery + Nacos Config
+- 服务调用：OpenFeign + Feign OkHttp
+- 负载均衡：Spring Cloud LoadBalancer
+- 引导上下文：Spring Cloud Bootstrap
+
+### open-ground-starter-all
+
+全量 Starter，一键引入所有模块，兼容旧版 `open-ground-starter`：
+
+- 继承：`open-ground-starter-springcloud` 全部依赖
+- 等同于引入全部 Open Ground 功能
 
 ### open-ground-dependency
 
-纯 BOM 模块（无任何依赖声明），仅提供 `<dependencyManagement>` 供其他项目 `import` 使用，确保版本一致。
+纯 BOM 模块（无任何依赖声明），提供 `<dependencyManagement>` 供其他项目 `import` 使用。统一管理以下版本：
+
+| 类别 | 主要依赖 |
+|------|----------|
+| **Spring Boot** | spring-boot-dependencies 3.4.4 |
+| **Spring Cloud** | spring-cloud-dependencies 2024.0.1 |
+| **Spring Cloud Alibaba** | spring-cloud-alibaba-dependencies 2023.0.3.2 |
+| **数据库** | MyBatis 3.0.4、Druid 1.2.24、MySQL Connector 8.2.0、PageHelper 2.1.0 |
+| **安全** | JJWT 0.11.5、Jasypt 3.0.5 |
+| **API 文档** | SpringDoc OpenAPI 2.8.4 |
+| **工具** | Lombok 1.18.38、Fastjson 2.0.57、Hutool 5.8.38、Guava 33.4.6-jre、Commons Lang3 3.17.0 |
+| **存储** | AWS S3 1.12.362 |
+| **其他** | EasyExcel 3.1.1、HttpClient5 5.4.2、Dom4j 2.1.4、JSqlParser 4.7、Logback 1.5.18 |
 
 ### open-ground-security
 
@@ -108,20 +161,18 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 项目采用 **SPI + 双部署模式** 架构：
 
 ```
-                  open-ground-starter (聚合 BOM)
+              open-ground-starter（分层聚合，按需引入）
                          │
-          ┌──────────────┼──────────────┬──────────────────┐
-          │              │              │                  │
-    open-ground-base  open-ground-common  open-ground-dependency  open-ground-security
-          │              │                      (BOM)              │
-          │     ┌────────┼────────┐                    ┌───────────┼───────────┐
-          │     │        │        │                    │           │           │
-          │  common-api  core  springcloud          security-api  core    starter
-          │  (SPI 定义)  (实现)  (Feign 实现)        (SPI 定义)  (实现)  (自动配置)
-          │
-     DTO/工具类    注解/枚举    AOP/过滤器    远程 Feign 调用    UserDetails    TokenStore
-                    SPI 接口    自动配置       (token/keygen/log) TokenManager  AuthFilter
-                               JDBC 实现                        ApiKeyService  SecurityContext
+     ┌───────────┬───────┴───────┬──────────────────┐
+     │           │               │                  │
+  starter-base  starter-common  starter-security  starter-springcloud  starter-all
+     │           │               │                  │                    │
+     │     ┌─────┴─────┐   ┌────┴────┐        ┌────┴────┐          (全量)
+     │  common-api  core  security  security  springcloud
+     │  (SPI 定义) (实现)  -api     -core      (Feign)
+     │              │    (SPI)    (Token)        │
+  base (DTO/工具)  AOP/过滤器  用户认证   ApiKey     Nacos/Feign/LoadBalancer
+                    JDBC 实现   会话存储   Session
 ```
 
 ### 两种部署模式
@@ -139,16 +190,53 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 
 ### 引入依赖
 
+Starter 按功能层级划分，按需引入：
+
 ```xml
-<!-- 一键引入（推荐） -->
+<!-- ① 基础 Starter：Web + MyBatis + Redis + 工具库（最小依赖） -->
 <dependency>
     <groupId>io.github.open-ground</groupId>
-    <artifactId>open-ground-starter</artifactId>
+    <artifactId>open-ground-starter-base</artifactId>
     <version>${open-ground.version}</version>
     <type>pom</type>
 </dependency>
 
-<!-- 或按需引入 -->
+<!-- ② 公共组件 Starter：+ 操作日志 / OSS / EasyExcel / JSqlParser -->
+<dependency>
+    <groupId>io.github.open-ground</groupId>
+    <artifactId>open-ground-starter-common</artifactId>
+    <version>${open-ground.version}</version>
+    <type>pom</type>
+</dependency>
+
+<!-- ③ 安全 Starter：+ Token / ApiKey / 会话管理 -->
+<dependency>
+    <groupId>io.github.open-ground</groupId>
+    <artifactId>open-ground-starter-security</artifactId>
+    <version>${open-ground.version}</version>
+    <type>pom</type>
+</dependency>
+
+<!-- ④ 微服务 Starter：+ Nacos / Feign / LoadBalancer -->
+<dependency>
+    <groupId>io.github.open-ground</groupId>
+    <artifactId>open-ground-starter-springcloud</artifactId>
+    <version>${open-ground.version}</version>
+    <type>pom</type>
+</dependency>
+
+<!-- ⑤ 全量 Starter：一键引入所有模块 -->
+<dependency>
+    <groupId>io.github.open-ground</groupId>
+    <artifactId>open-ground-starter-all</artifactId>
+    <version>${open-ground.version}</version>
+    <type>pom</type>
+</dependency>
+```
+
+也可以按需单独引入模块：
+
+```xml
 <dependency>
     <groupId>io.github.open-ground</groupId>
     <artifactId>open-ground-base</artifactId>

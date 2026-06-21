@@ -1,5 +1,6 @@
 package io.github.openground.base.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,11 +21,15 @@ import java.io.Serializable;
 @NoArgsConstructor
 @ToString
 @SuppressWarnings("all")
+@Schema(description = "统一响应结果对象")
 public class CommonResult<T> implements Serializable {
     private static final long serialVersionUID = 6191745064790884707L;
 
+    @Schema(description = "响应码，0000 表示成功", example = "0000")
     private String code;
+    @Schema(description = "响应消息")
     private String message;
+    @Schema(description = "响应数据")
     private T data;
 
     public CommonResult(String code, String message, T data) {

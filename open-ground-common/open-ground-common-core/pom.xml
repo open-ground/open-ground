@@ -40,6 +40,18 @@
             <artifactId>spring-web</artifactId>
         </dependency>
 
+        <!-- Spring Web MVC（SseEmitter, @RestController） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
+
+        <!-- SpringDoc OpenAPI（@Operation, @Tag） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+        </dependency>
+
         <!-- Fastjson（参数序列化） -->
         <dependency>
             <groupId>com.alibaba</groupId>
@@ -63,7 +75,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- Hutool（Snowflake 工具依赖） -->
@@ -76,14 +87,12 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-s3</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>

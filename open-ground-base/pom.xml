@@ -50,5 +50,11 @@
             <artifactId>jakarta.servlet-api</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Swagger 注解（@Schema、@SchemaProperty），API 文档生成用，可选的 -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 </project>

@@ -23,18 +23,19 @@
 
     <dependencies>
         <!-- ==================== Open Ground 框架（模拟业务模块的依赖方式） ==================== -->
-        <!-- starter：base + common-core + Spring Boot 全套基础设施（Web/Undertow/MyBatis/Druid/MySQL/Redis/JJWT/工具库/测试框架...） -->
+        <!-- starter-all：一键引入全部模块 -->
         <dependency>
             <groupId>io.github.open-ground</groupId>
-            <artifactId>open-ground-starter</artifactId>
+            <artifactId>open-ground-starter-all</artifactId>
             <version>${revision}</version>
             <type>pom</type>
         </dependency>
-        <!-- security-starter：TokenManager / TokenStore / ApiKeyService 等安全组件 -->
+
+        <!-- Lombok（starter 中为 optional，需显式声明） -->
         <dependency>
-            <groupId>io.github.open-ground</groupId>
-            <artifactId>open-ground-security-springboot-starter</artifactId>
-            <version>${revision}</version>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- ==================== 测试 ==================== -->
