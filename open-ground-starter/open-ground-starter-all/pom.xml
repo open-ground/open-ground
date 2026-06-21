@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-starter</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-starter-all</artifactId>
+    <packaging>pom</packaging>
+    <name>Open Ground Starter All</name>
+    <description>Open Ground 全量 Starter — 一键引入所有模块，兼容旧版 open-ground-starter</description>
+
+    <dependencies>
+        <!-- 依赖 springcloud starter（传递所有依赖） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-starter-springcloud</artifactId>
+            <version>${revision}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
+</project>

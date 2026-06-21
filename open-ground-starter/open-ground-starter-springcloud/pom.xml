@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-starter</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>open-ground-starter-springcloud</artifactId>
+    <packaging>pom</packaging>
+    <name>Open Ground Starter Spring Cloud</name>
+    <description>Open Ground 微服务 Starter — 在 common 基础上增加 Nacos/Feign/LoadBalancer</description>
+
+    <dependencies>
+        <!-- 依赖 common starter（传递所有 common + base 依赖） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-starter-common</artifactId>
+            <version>${revision}</version>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Spring Cloud 微服务模块（传递 Nacos / Feign / LoadBalancer 等全部基础设施依赖） -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-common-springcloud</artifactId>
+        </dependency>
+    </dependencies>
+</project>
