@@ -76,7 +76,7 @@
                     <version>1.2.7</version>
                     <configuration>
                         <updatePomFile>true</updatePomFile>
-                        <flattenMode>oss</flattenMode>
+                        <flattenMode>resolveCiFriendliesOnly</flattenMode>
                     </configuration>
                     <executions>
                         <execution>
