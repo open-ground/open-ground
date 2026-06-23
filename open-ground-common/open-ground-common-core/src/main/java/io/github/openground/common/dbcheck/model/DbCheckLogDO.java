@@ -1,4 +1,4 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package com.dcits.dbcheck;
+package io.github.openground.common.dbcheck.model;
 
 /**
  * 脚本文件元信息 DTO

@@ -1,4 +1,4 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.spi;
 
 import java.sql.Connection;
 import java.util.List;

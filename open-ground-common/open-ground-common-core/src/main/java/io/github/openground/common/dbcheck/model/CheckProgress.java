@@ -1,4 +1,4 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.model;
 
 /**
  * 检查进度状态

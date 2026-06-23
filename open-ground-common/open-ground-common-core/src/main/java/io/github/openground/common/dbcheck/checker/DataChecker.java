@@ -1,5 +1,8 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.checker;
 
+import io.github.openground.common.dbcheck.util.DbCheckUtils;
+import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
+import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

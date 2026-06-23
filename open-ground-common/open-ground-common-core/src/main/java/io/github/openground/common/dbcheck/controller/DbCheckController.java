@@ -1,9 +1,18 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.controller;
 
 import com.github.pagehelper.PageInfo;
 import io.github.openground.base.constant.ErrorCode;
 import io.github.openground.base.dto.CommonResult;
 import io.github.openground.base.dto.PaginatedResult;
+import io.github.openground.common.dbcheck.model.ScriptInfo;
+import io.github.openground.common.dbcheck.service.AsyncCheckService;
+import io.github.openground.common.dbcheck.model.CheckProgress;
+import io.github.openground.common.dbcheck.spi.DbCheckDatasourceProvider;
+import io.github.openground.common.dbcheck.model.DbCheckLogDO;
+import io.github.openground.common.dbcheck.service.DbCheckLogService;
+import io.github.openground.common.dbcheck.model.DbCheckProperties;
+import io.github.openground.common.dbcheck.model.DbCheckResult;
+import io.github.openground.common.dbcheck.service.DbCheckService;
 import io.github.openground.common.security.SecurityContextHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -642,7 +651,7 @@ public class DbCheckController {
     @Operation(summary = "获取可用脚本文件列表")
     @GetMapping("/scripts")
     public ResponseEntity<?> listScripts() {
-        List<com.dcits.dbcheck.ScriptInfo> scripts = dbCheckService.getScriptList();
+        List<ScriptInfo> scripts = dbCheckService.getScriptList();
         return ResponseEntity.ok(
                 new CommonResult()
                         .setCode(ErrorCode.SUCCESS)

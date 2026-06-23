@@ -1,4 +1,4 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.model;
 
 import java.util.ArrayList;
 import java.util.HashMap;

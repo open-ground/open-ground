@@ -1,12 +1,22 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.config;
 
+import io.github.openground.common.dbcheck.service.DataSyncService;
+import io.github.openground.common.dbcheck.util.DatabaseTypeDetector;
+import io.github.openground.common.dbcheck.model.DbCheckProperties;
+import io.github.openground.common.dbcheck.service.DbCheckService;
+import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
+import io.github.openground.common.dbcheck.service.SchemaSyncService;
+import io.github.openground.common.dbcheck.extractor.ScriptPathResolver;
+import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
+import io.github.openground.common.dbcheck.extractor.SqlScriptScanner;
+import io.github.openground.common.dbcheck.checker.CommentChecker;
+import io.github.openground.common.dbcheck.checker.DataChecker;
+import io.github.openground.common.dbcheck.checker.DbSchemaComparator;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ResourceLoader;
 
 import javax.sql.DataSource;
 
@@ -34,15 +44,15 @@ public class DbCheckAutoConfiguration {
      */
     @Bean
     public DbCheckService dbCheckService(DatabaseTypeDetector databaseTypeDetector,
-                                        ScriptPathResolver scriptPathResolver,
-                                        SqlScriptScanner sqlScriptScanner,
-                                        SimpleSqlParser simpleSqlParser,
-                                        MetadataExtractor metadataExtractor,
-                                        DbSchemaComparator dbSchemaComparator,
-                                        DataChecker dataChecker,
-                                        SchemaSyncService schemaSyncService,
-                                        DataSyncService dataSyncService,
-                                        CommentChecker commentChecker) {
+                                         ScriptPathResolver scriptPathResolver,
+                                         SqlScriptScanner sqlScriptScanner,
+                                         SimpleSqlParser simpleSqlParser,
+                                         MetadataExtractor metadataExtractor,
+                                         DbSchemaComparator dbSchemaComparator,
+                                         DataChecker dataChecker,
+                                         SchemaSyncService schemaSyncService,
+                                         DataSyncService dataSyncService,
+                                         CommentChecker commentChecker) {
         return new DbCheckService(dbCheckProperties, databaseTypeDetector, scriptPathResolver,
                 sqlScriptScanner, simpleSqlParser, metadataExtractor, dbSchemaComparator, 
                 dataChecker, schemaSyncService, dataSyncService, commentChecker);

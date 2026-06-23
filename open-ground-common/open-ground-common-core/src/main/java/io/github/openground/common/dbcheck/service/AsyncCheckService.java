@@ -1,5 +1,9 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.service;
 
+import io.github.openground.common.dbcheck.model.CheckProgress;
+import io.github.openground.common.dbcheck.spi.DbCheckDatasourceProvider;
+import io.github.openground.common.dbcheck.model.DbCheckLogDO;
+import io.github.openground.common.dbcheck.model.DbCheckResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -138,7 +142,7 @@ public class AsyncCheckService {
      * @return 任务 ID
      */
     public String startCheckWithProvider(DbCheckDatasourceProvider provider, Long datasourceId,
-                                          String dbType, List<String> tableNames, String createBy) {
+                                         String dbType, List<String> tableNames, String createBy) {
         return startCheckWithProvider(provider, datasourceId, dbType, tableNames, null, createBy);
     }
 

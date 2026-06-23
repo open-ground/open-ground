@@ -1,5 +1,9 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.service;
 
+import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
+import io.github.openground.common.dbcheck.checker.DbSchemaComparator;
+import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
+import io.github.openground.common.dbcheck.util.DbCheckUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +41,7 @@ public class SchemaSyncService {
      * @return 同步结果
      */
     public SyncResult syncSchema(DbSchemaComparator.SchemaDiff diff, String dbType,
-                                  Map<String, String> tableComments) {
+                                 Map<String, String> tableComments) {
         SyncResult result = new SyncResult();
 
         if (diff.isEmpty()) {

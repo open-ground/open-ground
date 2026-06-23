@@ -1,7 +1,8 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.service;
 
 
 import com.github.pagehelper.PageInfo;
+import io.github.openground.common.dbcheck.model.DbCheckLogDO;
 
 /**
  * DbCheck 操作日志服务接口

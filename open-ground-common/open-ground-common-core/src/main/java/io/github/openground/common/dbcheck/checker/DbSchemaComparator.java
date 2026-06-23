@@ -1,5 +1,8 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.checker;
 
+import io.github.openground.common.dbcheck.util.DbCheckUtils;
+import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
+import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +29,7 @@ public class DbSchemaComparator {
      * @param dbTables 数据库中的表结构（从元数据提取）
      * @return 表结构差异报告
      */
-    public SchemaDiff compareTables(List<SimpleSqlParser.TableDefinition> scriptTables, 
+    public SchemaDiff compareTables(List<SimpleSqlParser.TableDefinition> scriptTables,
                                    List<MetadataExtractor.DbTableInfo> dbTables) {
         SchemaDiff diff = new SchemaDiff();
 

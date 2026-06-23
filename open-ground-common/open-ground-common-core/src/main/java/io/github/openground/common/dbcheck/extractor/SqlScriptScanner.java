@@ -1,5 +1,7 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.extractor;
 
+import io.github.openground.common.dbcheck.model.DbCheckProperties;
+import io.github.openground.common.dbcheck.util.DatabaseTypeDetector;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;

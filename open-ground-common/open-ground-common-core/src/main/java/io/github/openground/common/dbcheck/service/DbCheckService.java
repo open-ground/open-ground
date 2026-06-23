@@ -1,5 +1,17 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.service;
 
+import io.github.openground.common.dbcheck.model.ScriptInfo;
+import io.github.openground.common.dbcheck.util.DbCheckUtils;
+import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
+import io.github.openground.common.dbcheck.extractor.ScriptPathResolver;
+import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
+import io.github.openground.common.dbcheck.extractor.SqlScriptScanner;
+import io.github.openground.common.dbcheck.checker.CommentChecker;
+import io.github.openground.common.dbcheck.checker.DataChecker;
+import io.github.openground.common.dbcheck.checker.DbSchemaComparator;
+import io.github.openground.common.dbcheck.model.DbCheckProperties;
+import io.github.openground.common.dbcheck.model.DbCheckResult;
+import io.github.openground.common.dbcheck.util.DatabaseTypeDetector;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -204,13 +216,13 @@ public class DbCheckService {
      *
      * @return 脚本元信息列表
      */
-    public List<com.dcits.dbcheck.ScriptInfo> getScriptList() {
+    public List<ScriptInfo> getScriptList() {
         String dbType = resolveDbType();
         List<SqlScriptScanner.SqlScript> scripts = sqlScriptScanner.scanScripts(
                 dbCheckProperties.getLocations(), dbType);
-        List<com.dcits.dbcheck.ScriptInfo> list = new ArrayList<>(scripts.size());
+        List<ScriptInfo> list = new ArrayList<>(scripts.size());
         for (SqlScriptScanner.SqlScript script : scripts) {
-            list.add(new com.dcits.dbcheck.ScriptInfo(script.getScriptKey(), script.getFileName(),
+            list.add(new ScriptInfo(script.getScriptKey(), script.getFileName(),
                     script.getModulePath(), script.getFileSize()));
         }
         return list;

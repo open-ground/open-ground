@@ -1,4 +1,4 @@
-package io.github.openground.common.dbcheck;
+package io.github.openground.common.dbcheck.model;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
