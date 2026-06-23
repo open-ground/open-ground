@@ -100,15 +100,16 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
+        <!-- PageHelper 分页插件 -->
         <dependency>
             <groupId>com.github.pagehelper</groupId>
-            <artifactId>pagehelper</artifactId>
-            <version>6.1.0</version>
-            <scope>compile</scope>
+            <artifactId>pagehelper-spring-boot-starter</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.github.open-ground</groupId>
             <artifactId>open-ground-security-api</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>

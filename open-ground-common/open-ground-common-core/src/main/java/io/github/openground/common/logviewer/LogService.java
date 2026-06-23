@@ -111,10 +111,10 @@ public class LogService {
     /**
      * 读取日志文件内容（从末尾倒序分页读取）
      *
-     * @param date     日期
+     * @param date   日期
      * @param fileName 文件名
-     * @param offset   偏移量（已读取的行数）
-     * @param limit    本次读取行数
+     * @param offset 偏移量（已读取的行数）
+     * @param limit  本次读取行数
      * @return 日志行列表（从旧到新排列）
      */
     public List<String> readContent(String date, String fileName, long offset, int limit) {
@@ -366,6 +366,8 @@ public class LogService {
         private final SseEmitter emitter;
         private final String sessionId;
         private volatile boolean running = true;
+        /** 客户端是否已断开连接，用于跳过 complete() 避免 AsyncRequestNotUsableException */
+        private volatile boolean clientDisconnected = false;
 
         /** 轮询间隔（毫秒） */
         private static final long POLL_INTERVAL_MS = 500;
@@ -412,6 +414,7 @@ public class LogService {
                                         .data(decoded));
                             } catch (IOException e) {
                                 // 前端断开连接
+                                clientDisconnected = true;
                                 running = false;
                                 break;
                             }
@@ -439,10 +442,12 @@ public class LogService {
                     }
                 }
             } finally {
-                try {
-                    emitter.complete();
-                } catch (Exception e) {
-                    // ignore
+                if (!clientDisconnected) {
+                    try {
+                        emitter.complete();
+                    } catch (Exception e) {
+                        // ignore
+                    }
                 }
             }
         }
