@@ -142,7 +142,7 @@ public class AsyncCheckService {
      * @return 任务 ID
      */
     public String startCheckWithProvider(DbCheckDatasourceProvider provider, Long datasourceId,
-                                         String dbType, List<String> tableNames, String createBy) {
+                                          String dbType, List<String> tableNames, String createBy) {
         return startCheckWithProvider(provider, datasourceId, dbType, tableNames, null, createBy);
     }
 

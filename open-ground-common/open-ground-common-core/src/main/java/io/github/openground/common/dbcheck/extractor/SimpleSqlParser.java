@@ -268,26 +268,70 @@ public class SimpleSqlParser {
 
     /**
      * 判断是否纯粹是注释行
+     * <p>逐行检查：只有每一行都是注释时才判定为纯注释，
+     * 避免将注释块后的 SQL 语句误判为注释。
      */
     private boolean isCommentOnly(String sql) {
         String trimmed = sql.trim();
-        return trimmed.startsWith("--") || trimmed.startsWith("/*") || trimmed.startsWith("*");
+        // 快速判断：不以注释开头肯定不是纯注释
+        if (!trimmed.startsWith("--") && !trimmed.startsWith("/*") && !trimmed.startsWith("*")) {
+            return false;
+        }
+        // 逐行检查：只要有一行不是注释，就不是纯注释
+        String[] lines = trimmed.split("\n");
+        for (String line : lines) {
+            String tl = line.trim();
+            if (tl.isEmpty()) continue;
+            if (!tl.startsWith("--") && !tl.startsWith("/*") && !tl.startsWith("*")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
-     * 按分号分割 SQL 语句（基础版，JSqlParser 可处理复杂换行）
+     * 按分号分割 SQL 语句（智能版，跳过字符串字面量内的分号）
+     * <p>跟踪单引号字符串上下文，避免将字符串值中的分号误判为语句分隔符。
+     * 支持 SQL 中转义单引号（两个连续单引号 '' 表示一个单引号字符）。
      */
     private String[] splitSqlStatements(String sqlContent) {
         // 归一化换行符
         String normalized = sqlContent.replace("\r\n", "\n").replace("\r", "\n");
-        // 直接用分号拆分，JSqlParser 内部处理换行和空格
         List<String> statements = new ArrayList<>();
-        for (String part : normalized.split(";")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                statements.add(trimmed);
+        StringBuilder current = new StringBuilder();
+        boolean inSingleQuote = false;
+
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+
+            if (c == '\'') {
+                // 检测转义单引号（两个连续单引号表示一个单引号字符）
+                if (i + 1 < normalized.length() && normalized.charAt(i + 1) == '\'') {
+                    current.append(c);
+                    current.append(normalized.charAt(i + 1));
+                    i++; // 跳过下一个单引号
+                    continue;
+                }
+                inSingleQuote = !inSingleQuote;
+                current.append(c);
+            } else if (c == ';' && !inSingleQuote) {
+                // 分号且不在字符串内，作为语句分隔符
+                String trimmed = current.toString().trim();
+                if (!trimmed.isEmpty()) {
+                    statements.add(trimmed);
+                }
+                current = new StringBuilder();
+            } else {
+                current.append(c);
             }
         }
+
+        // 处理最后一条语句
+        String trimmed = current.toString().trim();
+        if (!trimmed.isEmpty()) {
+            statements.add(trimmed);
+        }
+
         return statements.toArray(new String[0]);
     }
 

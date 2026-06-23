@@ -125,7 +125,14 @@ public class DbCheckService {
 
         // 数据检查
         if (dbCheckProperties.isDataCheck() && !scriptInserts.isEmpty()) {
-            result.setDataResult(buildDataResult(scriptInserts, dbTables, dbType));
+            try {
+                result.setDataResult(buildDataResult(scriptInserts, dbTables, dbType));
+            } catch (Exception e) {
+                log.error("数据检查失败: {}", e.getMessage(), e);
+                List<SimpleSqlParser.ParseError> errList = new ArrayList<>(allParseErrors);
+                errList.add(new SimpleSqlParser.ParseError("数据检查", "数据检查异常: " + e.getMessage()));
+                result.setParseErrors(convertParseErrors(errList));
+            }
         }
 
         // 注释检查
@@ -196,7 +203,14 @@ public class DbCheckService {
 
         // 数据检查
         if (dbCheckProperties.isDataCheck() && !scriptInserts.isEmpty()) {
-            result.setDataResult(buildDataResult(scriptInserts, dbTables, dbType));
+            try {
+                result.setDataResult(buildDataResult(scriptInserts, dbTables, dbType));
+            } catch (Exception e) {
+                log.error("数据检查失败: {}", e.getMessage(), e);
+                List<SimpleSqlParser.ParseError> errList = new ArrayList<>(allParseErrors);
+                errList.add(new SimpleSqlParser.ParseError("数据检查", "数据检查异常: " + e.getMessage()));
+                result.setParseErrors(convertParseErrors(errList));
+            }
         }
 
         // 注释检查
@@ -543,7 +557,15 @@ public class DbCheckService {
 
         // 数据检查（★ 使用外部连接）
         if (dbCheckProperties.isDataCheck() && !scriptInserts.isEmpty()) {
-            result.setDataResult(buildDataResultWithConn(scriptInserts, dbTables, dbType, conn));
+            try {
+                result.setDataResult(buildDataResultWithConn(scriptInserts, dbTables, dbType, conn));
+            } catch (Exception e) {
+                log.error("数据检查失败: {}", e.getMessage(), e);
+                // 数据检查失败时，将错误信息加入 parseErrors，保留已收集的解析错误
+                List<SimpleSqlParser.ParseError> errList = new ArrayList<>(allParseErrors);
+                errList.add(new SimpleSqlParser.ParseError("数据检查", "数据检查异常: " + e.getMessage()));
+                result.setParseErrors(convertParseErrors(errList));
+            }
         }
 
         // 注释检查

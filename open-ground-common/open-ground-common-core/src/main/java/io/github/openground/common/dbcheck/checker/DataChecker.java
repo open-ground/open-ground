@@ -61,7 +61,15 @@ public class DataChecker {
         if (insertStatements.isEmpty() || dbTableInfo == null) return result;
 
         String tableName = dbTableInfo.getTableName();
-        String keyCol = insertStatements.get(0).getColumns().get(0);
+
+        // 确定列名列表：INSERT 有显式列名则使用，否则从数据库元数据获取
+        List<String> cols = insertStatements.get(0).getColumns();
+        if (cols.isEmpty()) {
+            cols = dbTableInfo.getColumns().stream()
+                    .map(MetadataExtractor.DbColumnInfo::getName)
+                    .collect(Collectors.toList());
+        }
+        String keyCol = cols.get(0);
 
         // 提取所有键值和条目
         List<String> keys = new ArrayList<>();
@@ -85,23 +93,24 @@ public class DataChecker {
             List<String> vals = allVals.get(idx);
             String keyVal = vals.isEmpty() ? "" : vals.get(0);
             Map<String, String> dbRow = dbRows.get(keyVal);
-            List<String> cols = stmt.getColumns();
+            // 列名：优先使用 INSERT 中的显式列名，否则使用数据库元数据列名
+            List<String> rowCols = stmt.getColumns().isEmpty() ? cols : stmt.getColumns();
 
             if (dbRow == null) {
                 // DB 中不存在该行 → 整行缺失
                 DataRecordDiff diff = new DataRecordDiff();
                 diff.setTableName(tableName);
                 diff.setMissing(true);
-                for (int i = 0; i < Math.min(cols.size(), vals.size()); i++) {
-                    diff.addField(cols.get(i), vals.get(i), null);
+                for (int i = 0; i < Math.min(rowCols.size(), vals.size()); i++) {
+                    diff.addField(rowCols.get(i), vals.get(i), null);
                 }
                 result.addDiff(tableName, diff);
                 mismatchCount++;
             } else {
                 // 存在则逐字段对比
                 List<FieldDiff> fieldDiffs = new ArrayList<>();
-                for (int i = 0; i < Math.min(cols.size(), vals.size()); i++) {
-                    String col = cols.get(i);
+                for (int i = 0; i < Math.min(rowCols.size(), vals.size()); i++) {
+                    String col = rowCols.get(i);
                     String scriptVal = vals.get(i);
                     String dbVal = dbRow.get(col.toLowerCase());
                     if (!valueEquals(scriptVal, dbVal)) {
@@ -185,9 +194,44 @@ public class DataChecker {
     private boolean valueEquals(String scriptVal, String dbVal) {
         if (scriptVal == null && dbVal == null) return true;
         if (scriptVal == null || dbVal == null) return false;
-        String sv = scriptVal.replace("'", "").trim();
+        // 先反义 MySQL 转义（如 \' → '），再比较
+        String sv = unescapeMysqlValue(scriptVal.trim());
         String dv = dbVal.trim();
         return sv.equals(dv);
+    }
+
+    /**
+     * 按 MySQL 规则反义 SQL 字符串值中的反斜杠转义
+     * <p>MySQL 默认将反斜杠视为转义字符，INSERT 脚本中的值经过 MySQL 存储后
+     * 转义序列会被处理。对比时需要将脚本值做同样的反义处理。
+     */
+    private String unescapeMysqlValue(String value) {
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\\' && i + 1 < value.length()) {
+                char next = value.charAt(i + 1);
+                switch (next) {
+                    case '\\': sb.append('\\'); i++; break;
+                    case '\'': sb.append('\''); i++; break;
+                    case '"':  sb.append('"');  i++; break;
+                    case 'n':  sb.append('\n'); i++; break;
+                    case 'r':  sb.append('\r'); i++; break;
+                    case 't':  sb.append('\t'); i++; break;
+                    case '0':  sb.append('\0'); i++; break;
+                    case 'b':  sb.append('\b'); i++; break;
+                    case 'Z':  sb.append((char) 26); i++; break;
+                    default:
+                        // MySQL 对无法识别的转义序列直接忽略反斜杠，保留后续字符
+                        sb.append(next);
+                        i++;
+                        break;
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private int countRows(String tableName, String dbType) {
@@ -215,7 +259,15 @@ public class DataChecker {
         List<String> result = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
-        for (char c : values.toCharArray()) {
+        for (int i = 0; i < values.length(); i++) {
+            char c = values.charAt(i);
+            if (c == '\\' && i + 1 < values.length()) {
+                // 保留反斜杠转义序列，由 valueEquals 中的 unescapeMysqlValue 统一处理
+                current.append(c);
+                current.append(values.charAt(i + 1));
+                i++;
+                continue;
+            }
             if (c == '\'') { inQuotes = !inQuotes; continue; }
             if (c == ',' && !inQuotes) {
                 String val = current.toString().trim();
