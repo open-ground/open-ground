@@ -1,6 +1,8 @@
 package io.github.openground.common.dbcheck;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +14,9 @@ import java.util.List;
  * @author open-ground
  * @since 2026-06-18
  */
+@Component
 @ConfigurationProperties("ground.db-check")
+@Data
 public class DbCheckProperties {
 
     /**
@@ -25,105 +29,61 @@ public class DbCheckProperties {
      * check-only: 仅检查，不执行覆盖
      * check-and-cover: 检查并覆盖不一致的表结构
      */
-    private String mode = "check-only";
+    private String mode = "check-and-cover";
 
     /**
-     * SQL 脚本目录（相对于 classpath）
+     * 是否启用数据检查
      */
-    private String scriptDir = "db/auth";
+    private boolean dataCheck = true;
 
     /**
-     * 脚本文件编码
+     * 是否启用注释检查
      */
-    private String encoding = "UTF-8";
+    private boolean commentCheck = true;
 
     /**
-     * 数据源 JNDI 名称（c3p0 数据源专用）
+     * 是否删除表中多余数据（当 dataCheck 为 true 时生效）
      */
-    private String jndiName = "java:comp/env/jdbc/builder";
+    private boolean deleteExtraData = false;
 
     /**
-     * JDBC URL（外部数据源直连）
+     * 脚本路径配置，类似 Flyway 的 locations
+     * 支持多个路径，按顺序执行
      */
-    private String jdbcUrl;
+    private List<String> locations = new ArrayList<>();
 
     /**
-     * JDBC 用户名
+     * 数据库类型，自动检测时可不配置
+     * 支持：mysql, oracle, dm, postgresql
      */
-    private String jdbcUsername;
+    private String databaseType;
 
     /**
-     * JDBC 密码
+     * 是否在应用启动时自动执行检查
      */
-    private String jdbcPassword;
+    private boolean autoCheckOnStartup = false;
 
     /**
-     * JDBC 驱动类名
+     * 检查失败时是否阻止应用启动
      */
-    private String jdbcDriver;
+    private boolean failOnMismatch = false;
 
     /**
-     * 忽略检查的表名列表
+     * 初始化脚本执行顺序
      */
-    private List<String> ignoreTables = new ArrayList<>();
+    private List<String> initScriptOrder = new ArrayList<>();
 
     /**
-     * 数据同步配置
+     * 脚本文件大小上限（MB），超过此大小的文件将被跳过
      */
-    private DataSyncConfig dataSync = new DataSyncConfig();
+    private long maxScriptSizeMb = 5;
 
     /**
-     * 数据同步配置
+     * 构造函数，初始化默认路径
      */
-    public static class DataSyncConfig {
-        /**
-         * 是否启用数据同步
-         */
-        private boolean enabled = false;
-
-        /**
-         * 数据同步脚本目录
-         */
-        private String dataDir = "db/auth/data";
-
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getDataDir() { return dataDir; }
-        public void setDataDir(String dataDir) { this.dataDir = dataDir; }
+    public DbCheckProperties() {
+        // 默认扫描 db 目录下的所有数据库类型脚本
+        locations.add("classpath*:db/*/${databaseType}/*.sql");
+        locations.add("classpath*:db/*/${databaseType}/*.ddl");
     }
-
-    // ===== Getters & Setters =====
-
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-
-    public String getMode() { return mode; }
-    public void setMode(String mode) { this.mode = mode; }
-
-    public String getScriptDir() { return scriptDir; }
-    public void setScriptDir(String scriptDir) { this.scriptDir = scriptDir; }
-
-    public String getEncoding() { return encoding; }
-    public void setEncoding(String encoding) { this.encoding = encoding; }
-
-    public String getJndiName() { return jndiName; }
-    public void setJndiName(String jndiName) { this.jndiName = jndiName; }
-
-    public String getJdbcUrl() { return jdbcUrl; }
-    public void setJdbcUrl(String jdbcUrl) { this.jdbcUrl = jdbcUrl; }
-
-    public String getJdbcUsername() { return jdbcUsername; }
-    public void setJdbcUsername(String jdbcUsername) { this.jdbcUsername = jdbcUsername; }
-
-    public String getJdbcPassword() { return jdbcPassword; }
-    public void setJdbcPassword(String jdbcPassword) { this.jdbcPassword = jdbcPassword; }
-
-    public String getJdbcDriver() { return jdbcDriver; }
-    public void setJdbcDriver(String jdbcDriver) { this.jdbcDriver = jdbcDriver; }
-
-    public List<String> getIgnoreTables() { return ignoreTables; }
-    public void setIgnoreTables(List<String> ignoreTables) { this.ignoreTables = ignoreTables; }
-
-    public DataSyncConfig getDataSync() { return dataSync; }
-    public void setDataSync(DataSyncConfig dataSync) { this.dataSync = dataSync; }
 }

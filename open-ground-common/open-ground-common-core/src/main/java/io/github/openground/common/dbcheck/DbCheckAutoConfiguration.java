@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 
 /**
  * DbCheck 自动配置类
+ * 集成到 Spring Boot 启动流程
  *
  * @author open-ground
  * @since 2026-06-18
@@ -28,93 +29,104 @@ public class DbCheckAutoConfiguration {
         this.dbCheckProperties = dbCheckProperties;
     }
 
+    /**
+     * 创建 DbCheck 主服务
+     */
     @Bean
-    @ConditionalOnMissingBean
+    public DbCheckService dbCheckService(DatabaseTypeDetector databaseTypeDetector,
+                                        ScriptPathResolver scriptPathResolver,
+                                        SqlScriptScanner sqlScriptScanner,
+                                        SimpleSqlParser simpleSqlParser,
+                                        MetadataExtractor metadataExtractor,
+                                        DbSchemaComparator dbSchemaComparator,
+                                        DataChecker dataChecker,
+                                        SchemaSyncService schemaSyncService,
+                                        DataSyncService dataSyncService,
+                                        CommentChecker commentChecker) {
+        return new DbCheckService(dbCheckProperties, databaseTypeDetector, scriptPathResolver,
+                sqlScriptScanner, simpleSqlParser, metadataExtractor, dbSchemaComparator, 
+                dataChecker, schemaSyncService, dataSyncService, commentChecker);
+    }
+
+    /**
+     * 创建数据库类型检测器
+     */
+    @Bean
     public DatabaseTypeDetector databaseTypeDetector() {
         return new DatabaseTypeDetector();
     }
 
+    /**
+     * 创建脚本路径解析器
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public ScriptPathResolver scriptPathResolver(ResourceLoader resourceLoader) {
-        return new ScriptPathResolver(dbCheckProperties, resourceLoader);
+    public ScriptPathResolver scriptPathResolver() {
+        return new ScriptPathResolver();
     }
 
+    /**
+     * 创建 SQL 脚本扫描器
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public SqlScriptScanner sqlScriptScanner(ScriptPathResolver scriptPathResolver) {
-        return new SqlScriptScanner(scriptPathResolver, dbCheckProperties);
+    public SqlScriptScanner sqlScriptScanner(ScriptPathResolver scriptPathResolver,
+                                           DatabaseTypeDetector databaseTypeDetector,
+                                           DbCheckProperties dbCheckProperties) {
+        return new SqlScriptScanner(scriptPathResolver, databaseTypeDetector, dbCheckProperties);
     }
 
+    /**
+     * 创建简化 SQL 解析器
+     */
     @Bean
-    @ConditionalOnMissingBean
     public SimpleSqlParser simpleSqlParser() {
         return new SimpleSqlParser();
     }
 
+    /**
+     * 创建元数据提取器
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public MetadataExtractor metadataExtractor(DatabaseTypeDetector databaseTypeDetector) {
-        return new MetadataExtractor(databaseTypeDetector);
+    public MetadataExtractor metadataExtractor(DataSource dataSource) {
+        return new MetadataExtractor(dataSource);
     }
 
+    /**
+     * 创建表结构比较器
+     */
     @Bean
-    @ConditionalOnMissingBean
     public DbSchemaComparator dbSchemaComparator() {
         return new DbSchemaComparator();
     }
 
+    /**
+     * 创建数据检查器
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public DataChecker dataChecker(MetadataExtractor metadataExtractor, DatabaseTypeDetector databaseTypeDetector) {
-        return new DataChecker(metadataExtractor, databaseTypeDetector, dbCheckProperties);
+    public DataChecker dataChecker(DataSource dataSource) {
+        return new DataChecker(dataSource);
     }
 
+    /**
+     * 创建表结构同步服务
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public DataSyncService dataSyncService() {
-        return new DataSyncService();
+    public SchemaSyncService schemaSyncService(DataSource dataSource) {
+        return new SchemaSyncService(dataSource);
     }
 
+    /**
+     * 创建数据同步服务
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public CommentChecker commentChecker(MetadataExtractor metadataExtractor, DatabaseTypeDetector databaseTypeDetector) {
-        return new CommentChecker(metadataExtractor, databaseTypeDetector);
+    public DataSyncService dataSyncService(DataSource dataSource) {
+        return new DataSyncService(dataSource);
     }
 
+    /**
+     * 创建注释检查器
+     */
     @Bean
-    @ConditionalOnMissingBean
-    public SchemaSyncService schemaSyncService() {
-        return new SchemaSyncService();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public DbCheckUtils dbCheckUtils() {
-        return new DbCheckUtils();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public DbCheckService dbCheckService(
-            DatabaseTypeDetector databaseTypeDetector,
-            ScriptPathResolver scriptPathResolver,
-            SqlScriptScanner sqlScriptScanner,
-            SimpleSqlParser simpleSqlParser,
-            MetadataExtractor metadataExtractor,
-            DbSchemaComparator dbSchemaComparator,
-            DataChecker dataChecker,
-            SchemaSyncService schemaSyncService,
-            DbCheckUtils dbCheckUtils) {
-        return new DbCheckService(dbCheckProperties, databaseTypeDetector,
-                scriptPathResolver, sqlScriptScanner, simpleSqlParser,
-                metadataExtractor, dbSchemaComparator, dataChecker,
-                schemaSyncService, dbCheckUtils);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public AsyncCheckService asyncCheckService(DbCheckService dbCheckService) {
-        return new AsyncCheckService(dbCheckService);
+    public CommentChecker commentChecker() {
+        return new CommentChecker();
     }
 }

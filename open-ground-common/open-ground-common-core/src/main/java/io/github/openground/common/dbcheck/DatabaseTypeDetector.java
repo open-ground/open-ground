@@ -1,83 +1,74 @@
 package io.github.openground.common.dbcheck;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * 数据库类型检测器
+ * 复用 Flyway 的数据库类型检测逻辑
  *
  * @author open-ground
  * @since 2026-06-18
  */
 @Slf4j
+@Component
 public class DatabaseTypeDetector {
+
+    private static final String DB_TYPE_MYSQL = "mysql";
+    private static final String DB_TYPE_ORACLE = "oracle";
+    private static final String DB_TYPE_DM = "dm";
+    private static final String DB_TYPE_POSTGRESQL = "postgresql";
+
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
 
     /**
      * 检测数据库类型
      *
-     * @param conn JDBC 连接
-     * @return 数据库类型（mysql/oracle/dm/postgresql/gaussdb）
+     * @return 数据库类型 (mysql/oracle/dm/postgresql)
      */
-    public String detect(Connection conn) {
-        try {
-            DatabaseMetaData meta = conn.getMetaData();
-            String productName = meta.getDatabaseProductName().toLowerCase();
-            String driverVersion = meta.getDriverVersion().toLowerCase();
-
-            if (productName.contains("mysql") || productName.contains("mariadb")) {
-                return "mysql";
-            } else if (productName.contains("oracle")) {
-                return "oracle";
-            } else if (productName.contains("dameng") || productName.contains("dm")) {
-                return "dm";
-            } else if (productName.contains("postgresql") || productName.contains("postgres")) {
-                // 区分 GaussDB 和 PostgreSQL
-                if (driverVersion.contains("gauss") || driverVersion.contains("opengauss")) {
-                    return "gaussdb";
-                }
-                return "postgresql";
-            } else if (productName.contains("gauss") || productName.contains("opengauss")) {
-                return "gaussdb";
-            } else if (productName.contains("h2")) {
-                return "h2";
-            }
-
-            log.warn("未能识别的数据库类型: productName={}", productName);
-            return "unknown";
-        } catch (SQLException e) {
-            log.error("检测数据库类型失败", e);
-            return "unknown";
+    public String detectDatabaseType() {
+        if (datasourceUrl == null || datasourceUrl.isEmpty()) {
+            log.info("spring.datasource.url is empty, defaulting to {}", DB_TYPE_MYSQL);
+            return DB_TYPE_MYSQL;
         }
+        
+        String url = datasourceUrl.toLowerCase();
+        if (url.contains(":mysql:")) {
+            return DB_TYPE_MYSQL;
+        }
+        if (url.contains(":oracle:")) {
+            return DB_TYPE_ORACLE;
+        }
+        if (url.contains(":dm:")) {
+            return DB_TYPE_DM;
+        }
+        if (url.contains(":postgresql:") || url.contains(":gaussdb:")) {
+            return DB_TYPE_POSTGRESQL;
+        }
+        
+        log.info("Unknown database type in URL: {}, defaulting to {}", datasourceUrl, DB_TYPE_MYSQL);
+        return DB_TYPE_MYSQL;
     }
 
     /**
-     * 根据数据库类型获取 JDBC 驱动类名
+     * 根据数据库类型获取对应的 SQL 文件扩展名
+     *
+     * @param dbType 数据库类型
+     * @return SQL 文件扩展名
      */
-    public String getDriverClassName(String dbType) {
+    public String getFileExtension(String dbType) {
         switch (dbType) {
-            case "mysql": return "com.mysql.cj.jdbc.Driver";
-            case "oracle": return "oracle.jdbc.OracleDriver";
-            case "dm": return "dm.jdbc.driver.DmDriver";
-            case "postgresql":
-            case "gaussdb": return "org.postgresql.Driver";
-            default: return "com.mysql.cj.jdbc.Driver";
-        }
-    }
-
-    /**
-     * 根据数据库类型获取 JDBC URL 前缀
-     */
-    public String getJdbcUrlPrefix(String dbType) {
-        switch (dbType) {
-            case "mysql": return "jdbc:mysql://";
-            case "oracle": return "jdbc:oracle:thin:@";
-            case "dm": return "jdbc:dm://";
-            case "postgresql":
-            case "gaussdb": return "jdbc:postgresql://";
-            default: return "jdbc:mysql://";
+            case DB_TYPE_ORACLE:
+                return ".sql";
+            case DB_TYPE_DM:
+                return ".sql";
+            case DB_TYPE_POSTGRESQL:
+                return ".sql";
+            case DB_TYPE_MYSQL:
+            default:
+                return ".sql";
         }
     }
 }

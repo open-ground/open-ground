@@ -7,7 +7,7 @@ import java.util.List;
  * DbCheck 数据源提供者 SPI 接口
  *
  * <p>允许外部模块（如 DMP）注册可检查的数据源。
- * open-ground-core 不依赖任何外部模块，通过此接口实现松耦合集成。
+ * ground-auth-core 不依赖任何外部模块，通过此接口实现松耦合集成。
  *
  * <p>实现类只需声明为 Spring Bean，DbCheckController 会自动收集并展示。
  *

@@ -1,56 +1,675 @@
 package io.github.openground.common.dbcheck;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 表结构同步服务
+ * 执行表结构覆盖操作
  *
  * @author open-ground
  * @since 2026-06-18
  */
 @Slf4j
+@Component
 public class SchemaSyncService {
 
+    private final DataSource dataSource;
+
+    public SchemaSyncService(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     /**
-     * 执行表结构同步 SQL
+     * 执行表结构覆盖
      *
-     * @param conn JDBC 连接
-     * @param sqls 同步 SQL 列表（ALTER TABLE / CREATE TABLE 等）
+     * @param diff 表结构差异
+     * @param dbType 数据库类型
+     * @param tableComments 表名→中文注释的映射（用于在 SQL 前添加注释行）
      * @return 同步结果
      */
-    public DbCheckResult.SyncResult syncSchema(Connection conn, List<String> sqls) {
-        DbCheckResult.SyncResult result = new DbCheckResult.SyncResult();
-        result.setTotal(sqls.size());
-        int success = 0;
-        int failed = 0;
-        List<String> errors = new java.util.ArrayList<>();
+    public SyncResult syncSchema(DbSchemaComparator.SchemaDiff diff, String dbType,
+                                  Map<String, String> tableComments) {
+        SyncResult result = new SyncResult();
 
-        try (Statement stmt = conn.createStatement()) {
-            for (String sql : sqls) {
-                try {
-                    stmt.execute(sql);
-                    success++;
-                    log.debug("同步 SQL 执行成功: {}", sql.substring(0, Math.min(sql.length(), 80)));
-                } catch (Exception e) {
-                    failed++;
-                    String errMsg = "SQL 执行失败: " + e.getMessage()
-                            + " | SQL: " + sql.substring(0, Math.min(sql.length(), 100));
-                    errors.add(errMsg);
-                    log.warn("同步 SQL 执行失败: {}", e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.error("表结构同步过程中发生异常", e);
-            errors.add("同步异常: " + e.getMessage());
+        if (diff.isEmpty()) {
+            log.info("No schema differences found, no sync needed");
+            return result;
         }
 
-        result.setSuccess(success);
-        result.setFailed(failed);
-        result.setErrors(errors);
+        // 生成同步 SQL
+        List<String> syncSqls = generateSyncSqls(diff, dbType, tableComments);
+        result.setSyncSqls(syncSqls);
+
+        log.info("Generated {} SQL statements for schema sync", syncSqls.size());
         return result;
+    }
+
+    /**
+     * 生成同步 SQL 语句
+     */
+    private List<String> generateSyncSqls(DbSchemaComparator.SchemaDiff diff, String dbType,
+                                           Map<String, String> tableComments) {
+        List<String> sqls = new ArrayList<>();
+        if (tableComments == null) {
+            tableComments = Collections.emptyMap();
+        }
+
+        // 生成创建缺失表的 SQL
+        for (SimpleSqlParser.TableDefinition table : diff.getMissingTables()) {
+            String comment = tableComments.get(table.getTableName().toLowerCase());
+            String createSql = generateCreateTableSql(table, dbType, comment);
+            sqls.add(createSql);
+        }
+
+        // 生成修改表结构的 SQL
+        for (String tableName : diff.getColumnDiffs().keySet()) {
+            DbSchemaComparator.TableColumnDiff columnDiff = diff.getColumnDiffs().get(tableName);
+            String comment = tableComments.get(tableName.toLowerCase());
+            List<String> alterSqls = generateAlterTableSql(tableName, columnDiff, dbType, comment);
+            sqls.addAll(alterSqls);
+        }
+
+        return sqls;
+    }
+
+    /**
+     * 从数据库元数据反向生成 CREATE TABLE 语句（多数据库兼容）
+     */
+    private String generateCreateTableFromDbMeta(MetadataExtractor.DbTableInfo table, String dbType) {
+        List<MetadataExtractor.DbColumnInfo> columns = table.getColumns();
+        boolean isOracle = DbCheckUtils.isOracleOrDm(dbType);
+        boolean isPg = DbCheckUtils.isPostgresql(dbType);
+        boolean isMysql = !isOracle && !isPg;
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("-- ").append(table.getTableName());
+        if (table.getComment() != null && !table.getComment().isEmpty()) {
+            sql.append(": ").append(table.getComment());
+        }
+        sql.append("\n");
+
+        sql.append("CREATE TABLE ").append(DbCheckUtils.quoteId(table.getTableName(), dbType)).append(" (\n");
+
+        for (int i = 0; i < columns.size(); i++) {
+            MetadataExtractor.DbColumnInfo col = columns.get(i);
+            sql.append("    ").append(DbCheckUtils.quoteId(col.getName(), dbType)).append(" ");
+            sql.append(normalizeColumnType(col, dbType));
+
+            if ("NO".equalsIgnoreCase(col.getNullable())) {
+                sql.append(" NOT NULL");
+            }
+
+            // 自增列（MySQL: AUTO_INCREMENT, PostgreSQL: GENERATED ... AS IDENTITY, Oracle/DM: GENERATED ... AS IDENTITY）
+            if (col.isAutoIncrement()) {
+                if (isMysql) {
+                    sql.append(" AUTO_INCREMENT");
+                } else if (isPg) {
+                    sql.append(" GENERATED BY DEFAULT AS IDENTITY");
+                } else if (isOracle) {
+                    sql.append(" GENERATED BY DEFAULT AS IDENTITY");
+                }
+            }
+
+            if (col.getDefaultValue() != null && !col.getDefaultValue().isEmpty()) {
+                sql.append(" DEFAULT ").append(col.getDefaultValue());
+            }
+
+            // MySQL 列注释内联在列定义中
+            if (isMysql && col.getComment() != null && !col.getComment().isEmpty()) {
+                sql.append(" COMMENT '").append(col.getComment().replace("'", "''")).append("'");
+            }
+
+            sql.append(",\n");
+        }
+
+        // 主键约束（MySQL/PG 内联，Oracle/DM 外置 ADD CONSTRAINT）
+        List<String> pkCols = table.getPrimaryKeyColumns();
+        if (pkCols != null && !pkCols.isEmpty()) {
+            if (isMysql || isPg) {
+                sql.append("    PRIMARY KEY (");
+                for (int i = 0; i < pkCols.size(); i++) {
+                    if (i > 0) sql.append(", ");
+                    sql.append(DbCheckUtils.quoteId(pkCols.get(i), dbType));
+                }
+                sql.append(")\n");
+            } else {
+                // 移除末尾的 ",\n"
+                sql.setLength(sql.length() - 2);
+                sql.append("\n");
+            }
+        } else {
+            // 移除末尾的 ",\n"
+            sql.setLength(sql.length() - 2);
+            sql.append("\n");
+        }
+        sql.append(")");
+
+        // 表注释
+        boolean hasComment = table.getComment() != null && !table.getComment().isEmpty();
+        if (isOracle) {
+            sql.append(";\n");
+            if (hasComment) {
+                sql.append("COMMENT ON TABLE ").append(DbCheckUtils.quoteId(table.getTableName(), dbType))
+                        .append(" IS '").append(table.getComment()).append("';\n");
+            }
+            // Oracle/DM 外置主键约束
+            if (pkCols != null && !pkCols.isEmpty()) {
+                sql.append("ALTER TABLE ").append(DbCheckUtils.quoteId(table.getTableName(), dbType))
+                        .append(" ADD CONSTRAINT pk_").append(table.getTableName().toLowerCase())
+                        .append(" PRIMARY KEY (");
+                for (int i = 0; i < pkCols.size(); i++) {
+                    if (i > 0) sql.append(", ");
+                    sql.append(DbCheckUtils.quoteId(pkCols.get(i), dbType));
+                }
+                sql.append(");\n");
+            }
+        } else if (isPg) {
+            sql.append(";\n");
+            if (hasComment) {
+                sql.append("COMMENT ON TABLE ").append(DbCheckUtils.quoteId(table.getTableName(), dbType))
+                        .append(" IS '").append(table.getComment()).append("';\n");
+            }
+        } else {
+            // MySQL
+            if (hasComment) {
+                sql.append(" COMMENT='").append(table.getComment()).append("'");
+            }
+            sql.append(";\n");
+        }
+
+        // 列注释（Oracle/PG 外置 COMMENT ON COLUMN）
+        if (isOracle || isPg) {
+            for (MetadataExtractor.DbColumnInfo col : columns) {
+                if (col.getComment() != null && !col.getComment().isEmpty()) {
+                    sql.append("COMMENT ON COLUMN ")
+                            .append(DbCheckUtils.quoteId(table.getTableName(), dbType))
+                            .append(".").append(DbCheckUtils.quoteId(col.getName(), dbType))
+                            .append(" IS '").append(col.getComment()).append("';\n");
+                }
+            }
+        }
+
+        // 索引
+        List<MetadataExtractor.DbIndexInfo> indexes = table.getIndexList();
+        if (indexes != null && !indexes.isEmpty()) {
+            for (MetadataExtractor.DbIndexInfo idx : indexes) {
+                List<String> idxCols = idx.getColumnNames();
+                if (idxCols == null || idxCols.isEmpty()) continue;
+                sql.append(idx.isUnique() ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
+                sql.append(DbCheckUtils.quoteId(idx.getIndexName(), dbType));
+                sql.append(" ON ").append(DbCheckUtils.quoteId(table.getTableName(), dbType)).append(" (");
+                for (int i = 0; i < idxCols.size(); i++) {
+                    if (i > 0) sql.append(", ");
+                    sql.append(DbCheckUtils.quoteId(idxCols.get(i), dbType));
+                }
+                sql.append(");\n");
+            }
+        }
+
+        return sql.toString();
+    }
+
+    /**
+     * 列类型归一化 + 按目标数据库方言映射
+     */
+    private String normalizeColumnType(MetadataExtractor.DbColumnInfo col, String dbType) {
+        String rawType = col.getType() != null ? col.getType().toUpperCase() : "VARCHAR";
+        int size = col.getSize();
+
+        // 统一类型名
+        String baseType = DbCheckUtils.normalizeType(rawType);
+
+        // Oracle NUMBER 需要特殊处理：NUMBER(19) → NUMBER(19)，NUMBER(19,2) 暂无法从元数据获取 scale
+        // 整型类型的长度在部分驱动上无意义，对 VARCHAR/CHAR 保留
+        boolean needSize = ("VARCHAR".equals(baseType) || "CHAR".equals(baseType)
+                || "NUMERIC".equals(baseType) || "DECIMAL".equals(baseType))
+                && size > 0;
+
+        if (needSize) {
+            return baseType + "(" + size + ")";
+        }
+        return baseType;
+    }
+
+    /**
+     * 生成 CREATE TABLE SQL
+     */
+    private String generateCreateTableSql(SimpleSqlParser.TableDefinition table, String dbType,
+                                           String comment) {
+        StringBuilder sql = new StringBuilder();
+
+        // 添加表注释前缀
+        if (comment != null && !comment.isEmpty()) {
+            sql.append("-- ").append(table.getTableName()).append(": ").append(comment).append("\n");
+        }
+
+        sql.append("CREATE TABLE ");
+        sql.append(DbCheckUtils.quoteId(table.getTableName(), dbType));
+        
+        sql.append(" (\n");
+        
+        // 添加字段定义
+        List<SimpleSqlParser.TableColumnDefinition> columns = table.getColumns();
+        for (int i = 0; i < columns.size(); i++) {
+            SimpleSqlParser.TableColumnDefinition column = columns.get(i);
+            sql.append("  ");
+            
+            // 字段名
+            sql.append(DbCheckUtils.quoteId(column.getName(), dbType));
+            
+            // 字段类型（跨数据库方言映射）
+            String colType = DbCheckUtils.mapColumnType(column.getType(), dbType);
+            sql.append(" ").append(colType);
+            
+            // 长度
+            if (column.getLength() != null && !column.getLength().isEmpty()) {
+                sql.append("(").append(column.getLength()).append(")");
+            }
+            
+            // 属性
+            if (column.getAttributes() != null && !column.getAttributes().isEmpty()) {
+                sql.append(" ").append(column.getAttributes());
+            }
+            
+            if (i < columns.size() - 1) {
+                sql.append(",");
+            }
+            sql.append("\n");
+        }
+        
+        sql.append(")");
+
+        // 拼接表选项（如 ENGINE=InnoDB COMMENT='用户表'）
+        String tableOptions = table.getTableOptions();
+        if (tableOptions != null && !tableOptions.isEmpty()) {
+            sql.append(" ").append(tableOptions);
+        }
+
+        return sql.toString();
+    }
+
+    /**
+     * 生成 ALTER TABLE SQL
+     */
+    private List<String> generateAlterTableSql(String tableName,
+                                              DbSchemaComparator.TableColumnDiff columnDiff,
+                                              String dbType,
+                                              String comment) {
+        List<String> sqls = new ArrayList<>();
+
+        // 表注释前缀
+        String prefix = "";
+        if (comment != null && !comment.isEmpty()) {
+            prefix = "-- " + tableName + ": " + comment + "\n";
+        }
+
+        // 添加缺失的字段
+        for (SimpleSqlParser.TableColumnDefinition column : columnDiff.getMissingColumns()) {
+            String alterSql = generateAddColumnSql(tableName, column, dbType);
+            sqls.add(prefix + alterSql);
+        }
+        
+        // 处理类型不匹配的字段
+        for (DbSchemaComparator.ColumnTypeMismatch mismatch : columnDiff.getTypeMismatches().values()) {
+            List<String> modifySqls = generateModifyColumnSql(tableName, mismatch, dbType);
+            for (String ms : modifySqls) {
+                sqls.add(prefix + ms);
+            }
+        }
+        
+        // 注意：不处理多余字段的删除，避免数据丢失
+        if (!columnDiff.getExtraColumns().isEmpty()) {
+            log.warn("Found {} extra columns in table {}, skipping deletion for safety", 
+                    columnDiff.getExtraColumns().size(), tableName);
+        }
+        
+        // 处理非空约束差异
+        for (DbSchemaComparator.NullableDiff nd : columnDiff.getNullableDiffs()) {
+            List<String> nullableSqls = generateAlterNullableSql(tableName, nd, dbType);
+            for (String ns : nullableSqls) {
+                sqls.add(prefix + ns);
+            }
+        }
+        
+        return sqls;
+    }
+
+    /**
+     * 生成添加字段的 SQL
+     */
+    private String generateAddColumnSql(String tableName, 
+                                       SimpleSqlParser.TableColumnDefinition column, 
+                                       String dbType) {
+        StringBuilder sql = new StringBuilder();
+        sql.append("ALTER TABLE ");
+        sql.append(DbCheckUtils.quoteId(tableName, dbType));
+        sql.append(" ADD ");
+        sql.append(DbCheckUtils.quoteId(column.getName(), dbType));
+        
+        // 字段类型（跨数据库方言映射）
+        String colType = DbCheckUtils.mapColumnType(column.getType(), dbType);
+        sql.append(" ").append(colType);
+        
+        // 长度
+        if (column.getLength() != null && !column.getLength().isEmpty()) {
+            sql.append("(").append(column.getLength()).append(")");
+        }
+        
+        // 属性
+        if (column.getAttributes() != null && !column.getAttributes().isEmpty()) {
+            sql.append(" ").append(column.getAttributes());
+        }
+        
+        return sql.toString();
+    }
+
+    /**
+     * 生成修改字段的 SQL（多数据库兼容）
+     * <ul>
+     *   <li>MySQL → {@code ALTER TABLE t MODIFY COLUMN col type}</li>
+     *   <li>Oracle/DM → {@code ALTER TABLE t MODIFY col type}</li>
+     *   <li>PostgreSQL → {@code ALTER TABLE t ALTER COLUMN col TYPE type} + {@code ALTER COLUMN col SET NOT NULL}</li>
+     * </ul>
+     */
+    private List<String> generateModifyColumnSql(String tableName, 
+                                                  DbSchemaComparator.ColumnTypeMismatch mismatch, 
+                                                  String dbType) {
+        List<String> sqls = new ArrayList<>();
+        String quotedTable = DbCheckUtils.quoteId(tableName, dbType);
+        SimpleSqlParser.TableColumnDefinition scriptColumn = mismatch.getScriptColumn();
+        String quotedCol = DbCheckUtils.quoteId(scriptColumn.getName(), dbType);
+        
+        // 字段类型（跨数据库方言映射）
+        String colType = DbCheckUtils.mapColumnType(scriptColumn.getType(), dbType);
+        if (scriptColumn.getLength() != null && !scriptColumn.getLength().isEmpty()) {
+            colType += "(" + scriptColumn.getLength() + ")";
+        }
+
+        if (DbCheckUtils.isPostgresql(dbType)) {
+            // PostgreSQL: ALTER TABLE t ALTER COLUMN col TYPE type
+            sqls.add("ALTER TABLE " + quotedTable + " ALTER COLUMN " + quotedCol
+                    + " TYPE " + colType);
+            // PostgreSQL: ALTER TABLE t ALTER COLUMN col SET NOT NULL / DROP NOT NULL
+            if (scriptColumn.getAttributes() != null
+                    && scriptColumn.getAttributes().toUpperCase().contains("NOT NULL")) {
+                sqls.add("ALTER TABLE " + quotedTable + " ALTER COLUMN " + quotedCol
+                        + " SET NOT NULL");
+            }
+        } else if (DbCheckUtils.isOracleOrDm(dbType)) {
+            // Oracle/DM: ALTER TABLE t MODIFY col type
+            StringBuilder sql = new StringBuilder();
+            sql.append("ALTER TABLE ").append(quotedTable).append(" MODIFY ");
+            sql.append(quotedCol).append(" ").append(colType);
+            sqls.add(sql.toString());
+        } else {
+            // MySQL: ALTER TABLE t MODIFY COLUMN col type
+            StringBuilder sql = new StringBuilder();
+            sql.append("ALTER TABLE ").append(quotedTable).append(" MODIFY COLUMN ");
+            sql.append(quotedCol).append(" ").append(colType);
+            if (scriptColumn.getAttributes() != null && !scriptColumn.getAttributes().isEmpty()) {
+                sql.append(" ").append(scriptColumn.getAttributes());
+            }
+            sqls.add(sql.toString());
+        }
+
+        return sqls;
+    }
+
+    /**
+     * 生成修改非空约束的 SQL（多数据库兼容）
+     * <ul>
+     *   <li>MySQL → {@code ALTER TABLE t MODIFY COLUMN col type [NOT NULL | NULL]}</li>
+     *   <li>Oracle/DM → {@code ALTER TABLE t MODIFY col [NOT NULL | NULL]}</li>
+     *   <li>PostgreSQL → {@code ALTER TABLE t ALTER COLUMN col [SET NOT NULL | DROP NOT NULL]}</li>
+     * </ul>
+     * <p>当将列从允许 NULL 改为 NOT NULL 时，若数据库当前允许 NULL（nd.isDbNotNull()=false），
+     * 会先生成 UPDATE 语句将已有 NULL 值替换为类型安全默认值，避免 {@code Invalid use of NULL value} 错误。
+     */
+    private List<String> generateAlterNullableSql(String tableName,
+                                                   DbSchemaComparator.NullableDiff nd,
+                                                   String dbType) {
+        List<String> sqls = new ArrayList<>();
+        String quotedTable = DbCheckUtils.quoteId(tableName, dbType);
+        String quotedCol = DbCheckUtils.quoteId(nd.getColumnName(), dbType);
+
+        boolean shouldBeNotNull = nd.isScriptNotNull();
+
+        // ★ 从允许 NULL 改为 NOT NULL：先清除已有的 NULL 值
+        if (shouldBeNotNull && !nd.isDbNotNull()) {
+            String defaultVal = getSafeDefaultForType(nd.getType());
+            if (defaultVal != null) {
+                sqls.add("UPDATE " + quotedTable + " SET " + quotedCol
+                        + " = " + defaultVal + " WHERE " + quotedCol + " IS NULL");
+            }
+        }
+
+        if (DbCheckUtils.isPostgresql(dbType)) {
+            if (shouldBeNotNull) {
+                sqls.add("ALTER TABLE " + quotedTable + " ALTER COLUMN " + quotedCol + " SET NOT NULL");
+            } else {
+                sqls.add("ALTER TABLE " + quotedTable + " ALTER COLUMN " + quotedCol + " DROP NOT NULL");
+            }
+        } else if (DbCheckUtils.isOracleOrDm(dbType)) {
+            // Oracle/DM: ALTER TABLE t MODIFY col [NOT NULL | NULL]
+            sqls.add("ALTER TABLE " + quotedTable + " MODIFY " + quotedCol + (shouldBeNotNull ? " NOT NULL" : " NULL"));
+        } else {
+            // MySQL: ALTER TABLE t MODIFY COLUMN col type [NOT NULL]
+            String colType = DbCheckUtils.mapColumnType(nd.getType(), dbType);
+            if (nd.getLength() != null && !nd.getLength().isEmpty()) {
+                colType += "(" + nd.getLength() + ")";
+            }
+            StringBuilder sql = new StringBuilder();
+            sql.append("ALTER TABLE ").append(quotedTable).append(" MODIFY COLUMN ");
+            sql.append(quotedCol).append(" ").append(colType);
+            if (shouldBeNotNull) {
+                sql.append(" NOT NULL");
+            }
+            // MySQL MODIFY COLUMN must include the full column definition; re-add original attributes if needed
+            if (nd.getAttributes() != null && !nd.getAttributes().isEmpty()) {
+                String attrs = nd.getAttributes().toUpperCase()
+                        .replace("NOT NULL", "").trim();
+                if (!attrs.isEmpty()) {
+                    sql.append(" ").append(attrs);
+                }
+            }
+            sqls.add(sql.toString());
+        }
+
+        return sqls;
+    }
+
+    /**
+     * 根据字段类型返回安全的默认值（用于替换 NULL）
+     *
+     * @return SQL 字面量：如 {@code ''}、{@code 0}，无法确定时返回 null（跳过 UPDATE）
+     */
+    private String getSafeDefaultForType(String type) {
+        if (type == null) return null;
+        String upper = type.toUpperCase().trim();
+        // 字符串类型 → 空串
+        if (upper.startsWith("VARCHAR") || upper.startsWith("CHAR")
+                || upper.equals("TEXT") || upper.equals("LONGTEXT")
+                || upper.equals("CLOB") || upper.equals("JSON")
+                || upper.equals("JSONB") || upper.equals("ENUM")
+                || upper.equals("SET")) {
+            return "''";
+        }
+        // 数字类型 → 0
+        if (upper.startsWith("INT") || upper.startsWith("BIGINT")
+                || upper.startsWith("SMALLINT") || upper.startsWith("TINYINT")
+                || upper.startsWith("DECIMAL") || upper.startsWith("NUMERIC")
+                || upper.startsWith("FLOAT") || upper.startsWith("DOUBLE")
+                || upper.startsWith("REAL") || upper.equals("NUMBER")
+                || upper.equals("BIT") || upper.equals("SERIAL")
+                || upper.equals("BIGSERIAL")) {
+            return "0";
+        }
+        // 日期时间 → CURRENT_TIMESTAMP (MySQL/PostgreSQL 通用)
+        if (upper.startsWith("DATE") || upper.startsWith("TIME")
+                || upper.startsWith("TIMESTAMP") || upper.equals("YEAR")) {
+            return "'1970-01-01'";
+        }
+        // 其他类型无法确定安全默认值，返回 null 跳过 UPDATE
+        return null;
+    }
+
+    /**
+     * 实际执行同步 SQL 语句
+     */
+    public void executeSyncSqls(List<String> sqls) {
+        if (sqls.isEmpty()) return;
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
+            for (String sql : sqls) {
+                log.info("Executing schema sync SQL: {}", sql);
+                stmt.executeUpdate(sql);
+            }
+            conn.commit();
+            log.info("Schema sync executed successfully: {} SQLs", sqls.size());
+        } catch (Exception e) {
+            log.error("Schema sync execution failed", e);
+            throw new RuntimeException("Table schema sync failed", e);
+        }
+    }
+
+    /**
+     * 使用外部连接执行同步 SQL 语句
+     *
+     * @param conn 外部 JDBC 连接
+     * @param sqls 要执行的 SQL 列表
+     */
+    public void executeSyncSqls(Connection conn, List<String> sqls) {
+        if (sqls.isEmpty()) return;
+        try (Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
+            for (String sql : sqls) {
+                log.info("Executing schema sync SQL: {}", sql);
+                stmt.executeUpdate(sql);
+            }
+            conn.commit();
+            log.info("Schema sync executed successfully: {} SQLs", sqls.size());
+        } catch (Exception e) {
+            log.error("Schema sync execution failed", e);
+            throw new RuntimeException("Table schema sync failed", e);
+        }
+    }
+
+    /**
+     * 为多余表生成 CREATE TABLE SQL（供外部数据源等场景在 buildSyncSqls 之外使用）
+     *
+     * @param extraTables 数据库中多余的表信息列表
+     * @param dbType      数据库类型
+     * @return CREATE TABLE SQL 列表
+     */
+    public List<String> generateCreateSqlsForExtraTables(List<MetadataExtractor.DbTableInfo> extraTables,
+                                                          String dbType) {
+        List<String> sqls = new ArrayList<>();
+        for (MetadataExtractor.DbTableInfo table : extraTables) {
+            sqls.add(generateCreateTableFromDbMeta(table, dbType));
+        }
+        return sqls;
+    }
+
+    /**
+     * 生成 DROP COLUMN SQL
+     */
+    private String generateDropColumnSql(String tableName, MetadataExtractor.DbColumnInfo column, String dbType) {
+        return "ALTER TABLE " + DbCheckUtils.quoteId(tableName, dbType)
+                + " DROP COLUMN " + DbCheckUtils.quoteId(column.getName(), dbType);
+    }
+
+    /**
+     * 执行表结构覆盖（含多余字段删除）
+     *
+     * <p>与 syncSchema 的区别：对数据库中多余且脚本中不存在的字段，
+     * 生成 DROP COLUMN 语句强制删除，以脚本为准。
+     *
+     * @param diff 表结构差异
+     * @param dbType 数据库类型
+     * @param tableComments 表名→中文注释的映射
+     * @return 同步结果
+     */
+    public SyncResult syncSchemaWithDrop(DbSchemaComparator.SchemaDiff diff, String dbType,
+                                          Map<String, String> tableComments) {
+        SyncResult result = new SyncResult();
+        if (diff.isEmpty()) {
+            return result;
+        }
+        List<String> syncSqls = generateSyncSqlsWithDrop(diff, dbType, tableComments);
+        result.setSyncSqls(syncSqls);
+        return result;
+    }
+
+    /**
+     * 生成同步 SQL 语句（含多余字段 DROP COLUMN）
+     */
+    private List<String> generateSyncSqlsWithDrop(DbSchemaComparator.SchemaDiff diff, String dbType,
+                                                   Map<String, String> tableComments) {
+        List<String> sqls = new ArrayList<>();
+        if (tableComments == null) {
+            tableComments = Collections.emptyMap();
+        }
+
+        // 生成创建缺失表的 SQL
+        for (SimpleSqlParser.TableDefinition table : diff.getMissingTables()) {
+            String comment = tableComments.get(table.getTableName().toLowerCase());
+            sqls.add(generateCreateTableSql(table, dbType, comment));
+        }
+
+        // 生成修改表结构的 SQL（含 DROP COLUMN）
+        for (String tableName : diff.getColumnDiffs().keySet()) {
+            DbSchemaComparator.TableColumnDiff columnDiff = diff.getColumnDiffs().get(tableName);
+            String comment = tableComments.get(tableName.toLowerCase());
+            String prefix = (comment != null && !comment.isEmpty()) ? "-- " + tableName + ": " + comment + "\n" : "";
+
+            // 添加缺失字段
+            for (SimpleSqlParser.TableColumnDefinition column : columnDiff.getMissingColumns()) {
+                sqls.add(prefix + generateAddColumnSql(tableName, column, dbType));
+            }
+            // 处理类型不匹配
+            for (DbSchemaComparator.ColumnTypeMismatch mismatch : columnDiff.getTypeMismatches().values()) {
+                for (String ms : generateModifyColumnSql(tableName, mismatch, dbType)) {
+                    sqls.add(prefix + ms);
+                }
+            }
+            // ★ 删除多余字段（以脚本为准）
+            for (MetadataExtractor.DbColumnInfo col : columnDiff.getExtraColumns()) {
+                sqls.add(prefix + generateDropColumnSql(tableName, col, dbType));
+            }
+            // 处理非空约束差异
+            for (DbSchemaComparator.NullableDiff nd : columnDiff.getNullableDiffs()) {
+                for (String ns : generateAlterNullableSql(tableName, nd, dbType)) {
+                    sqls.add(prefix + ns);
+                }
+            }
+        }
+
+        return sqls;
+    }
+
+    // ========== 内部实体类 ==========
+
+    public static class SyncResult {
+        private List<String> syncSqls = new ArrayList<>();
+        private boolean success;
+        private String errorMessage;
+
+        // Getters and Setters
+        public List<String> getSyncSqls() { return syncSqls; }
+        public void setSyncSqls(List<String> syncSqls) { this.syncSqls = syncSqls; }
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     }
 }

@@ -30,17 +30,17 @@ public class DbCheckResult {
     /** 注释差异 */
     private CommentCheckResult commentResult;
 
-    /** 同步 SQL 列表 */
+    /** 生成的同步 SQL 列表 */
     private List<String> syncSqls;
 
-    /** 同步结果（执行同步后的反馈） */
-    private SyncResult syncResult;
+    /** 是否已执行同步 */
+    private boolean executed;
 
-    public DbCheckResult() {
-        this.syncSqls = new ArrayList<>();
-    }
+    /** 执行耗时（毫秒） */
+    private long elapsedMs;
 
-    // ===== Getters & Setters =====
+    /** SQL 解析错误列表 */
+    private List<ParseErrorInfo> parseErrors;
 
     public String getDbType() { return dbType; }
     public void setDbType(String dbType) { this.dbType = dbType; }
@@ -60,174 +60,113 @@ public class DbCheckResult {
     public List<String> getSyncSqls() { return syncSqls; }
     public void setSyncSqls(List<String> syncSqls) { this.syncSqls = syncSqls; }
 
-    public SyncResult getSyncResult() { return syncResult; }
-    public void setSyncResult(SyncResult syncResult) { this.syncResult = syncResult; }
+    public boolean isExecuted() { return executed; }
+    public void setExecuted(boolean executed) { this.executed = executed; }
 
-    // ===== 内部结果类 =====
+    public long getElapsedMs() { return elapsedMs; }
+    public void setElapsedMs(long elapsedMs) { this.elapsedMs = elapsedMs; }
 
-    /**
-     * 表结构差异结果
-     */
+    public List<ParseErrorInfo> getParseErrors() { return parseErrors; }
+    public void setParseErrors(List<ParseErrorInfo> parseErrors) { this.parseErrors = parseErrors; }
+
+    // ===== 内部类 =====
+
     public static class SchemaCheckResult {
-        private int totalTables;
-        private int matchedTables;
-        private int mismatchedTables;
-        private int onlyInScript;
-        private int onlyInDatabase;
-        private List<TableDiff> diffs;
+        private boolean consistent = true;
+        private List<String> missingTables = new ArrayList<>();
+        private List<String> extraTables = new ArrayList<>();
+        private List<ColumnDiffItem> columnDiffs = new ArrayList<>();
+        private Map<String, List<String>> pkDiffs = new HashMap<>();
+        private Map<String, List<String>> indexDiffs = new HashMap<>();
 
-        public SchemaCheckResult() { this.diffs = new ArrayList<>(); }
-
-        public int getTotalTables() { return totalTables; }
-        public void setTotalTables(int totalTables) { this.totalTables = totalTables; }
-        public int getMatchedTables() { return matchedTables; }
-        public void setMatchedTables(int matchedTables) { this.matchedTables = matchedTables; }
-        public int getMismatchedTables() { return mismatchedTables; }
-        public void setMismatchedTables(int mismatchedTables) { this.mismatchedTables = mismatchedTables; }
-        public int getOnlyInScript() { return onlyInScript; }
-        public void setOnlyInScript(int onlyInScript) { this.onlyInScript = onlyInScript; }
-        public int getOnlyInDatabase() { return onlyInDatabase; }
-        public void setOnlyInDatabase(int onlyInDatabase) { this.onlyInDatabase = onlyInDatabase; }
-        public List<TableDiff> getDiffs() { return diffs; }
-        public void setDiffs(List<TableDiff> diffs) { this.diffs = diffs; }
+        public boolean isConsistent() { return consistent; }
+        public void setConsistent(boolean consistent) { this.consistent = consistent; }
+        public List<String> getMissingTables() { return missingTables; }
+        public void setMissingTables(List<String> missingTables) { this.missingTables = missingTables; }
+        public List<String> getExtraTables() { return extraTables; }
+        public void setExtraTables(List<String> extraTables) { this.extraTables = extraTables; }
+        public List<ColumnDiffItem> getColumnDiffs() { return columnDiffs; }
+        public void setColumnDiffs(List<ColumnDiffItem> columnDiffs) { this.columnDiffs = columnDiffs; }
+        public Map<String, List<String>> getPkDiffs() { return pkDiffs; }
+        public void setPkDiffs(Map<String, List<String>> pkDiffs) { this.pkDiffs = pkDiffs; }
+        public Map<String, List<String>> getIndexDiffs() { return indexDiffs; }
+        public void setIndexDiffs(Map<String, List<String>> indexDiffs) { this.indexDiffs = indexDiffs; }
     }
 
-    /**
-     * 单表差异
-     */
-    public static class TableDiff {
+    public static class ColumnDiffItem {
         private String tableName;
-        private String status;      // MISMATCH, ONLY_IN_SCRIPT, ONLY_IN_DB
-        private List<String> details;
-
-        public TableDiff() { this.details = new ArrayList<>(); }
+        private List<String> missingColumns = new ArrayList<>();
+        private List<String> extraColumns = new ArrayList<>();
+        private List<String> typeMismatches = new ArrayList<>();
+        private List<String> nullableDiffs = new ArrayList<>();
 
         public String getTableName() { return tableName; }
         public void setTableName(String tableName) { this.tableName = tableName; }
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
-        public List<String> getDetails() { return details; }
-        public void setDetails(List<String> details) { this.details = details; }
+        public List<String> getMissingColumns() { return missingColumns; }
+        public void setMissingColumns(List<String> missingColumns) { this.missingColumns = missingColumns; }
+        public List<String> getExtraColumns() { return extraColumns; }
+        public void setExtraColumns(List<String> extraColumns) { this.extraColumns = extraColumns; }
+        public List<String> getTypeMismatches() { return typeMismatches; }
+        public void setTypeMismatches(List<String> typeMismatches) { this.typeMismatches = typeMismatches; }
+        public List<String> getNullableDiffs() { return nullableDiffs; }
+        public void setNullableDiffs(List<String> nullableDiffs) { this.nullableDiffs = nullableDiffs; }
     }
 
-    /**
-     * 数据差异结果
-     */
     public static class DataCheckResult {
-        private int totalTables;
+        private boolean consistent = true;
         private int conflictCount;
         private int upsertCount;
-        private List<DataDiff> diffs;
+        private List<String> diffs = new ArrayList<>();
+        private List<DataDiffItem> diffDetails = new ArrayList<>();
 
-        public DataCheckResult() { this.diffs = new ArrayList<>(); }
-
-        public int getTotalTables() { return totalTables; }
-        public void setTotalTables(int totalTables) { this.totalTables = totalTables; }
+        public boolean isConsistent() { return consistent; }
+        public void setConsistent(boolean consistent) { this.consistent = consistent; }
         public int getConflictCount() { return conflictCount; }
         public void setConflictCount(int conflictCount) { this.conflictCount = conflictCount; }
         public int getUpsertCount() { return upsertCount; }
         public void setUpsertCount(int upsertCount) { this.upsertCount = upsertCount; }
-        public List<DataDiff> getDiffs() { return diffs; }
-        public void setDiffs(List<DataDiff> diffs) { this.diffs = diffs; }
+        public List<String> getDiffs() { return diffs; }
+        public void setDiffs(List<String> diffs) { this.diffs = diffs; }
+        public List<DataDiffItem> getDiffDetails() { return diffDetails; }
+        public void setDiffDetails(List<DataDiffItem> diffDetails) { this.diffDetails = diffDetails; }
     }
 
-    /**
-     * 单表数据差异
-     */
-    public static class DataDiff {
-        private String tableName;
-        private int conflictRows;
-        private int upsertRows;
-        private List<String> sampleConflicts;
+    public static class DataDiffItem {
+        private String table;
+        private boolean missing;
+        private List<Map<String, String>> fields = new ArrayList<>();
 
-        public DataDiff() { this.sampleConflicts = new ArrayList<>(); }
-
-        public String getTableName() { return tableName; }
-        public void setTableName(String tableName) { this.tableName = tableName; }
-        public int getConflictRows() { return conflictRows; }
-        public void setConflictRows(int conflictRows) { this.conflictRows = conflictRows; }
-        public int getUpsertRows() { return upsertRows; }
-        public void setUpsertRows(int upsertRows) { this.upsertRows = upsertRows; }
-        public List<String> getSampleConflicts() { return sampleConflicts; }
-        public void setSampleConflicts(List<String> sampleConflicts) { this.sampleConflicts = sampleConflicts; }
+        public String getTable() { return table; }
+        public void setTable(String table) { this.table = table; }
+        public boolean isMissing() { return missing; }
+        public void setMissing(boolean missing) { this.missing = missing; }
+        public List<Map<String, String>> getFields() { return fields; }
+        public void setFields(List<Map<String, String>> fields) { this.fields = fields; }
     }
 
-    /**
-     * 注释差异结果
-     */
     public static class CommentCheckResult {
-        private int totalTables;
-        private int mismatchCount;
-        private List<CommentDiff> diffs;
+        private boolean consistent = true;
+        private List<Map<String, String>> mismatches = new ArrayList<>();
+        private List<Map<String, String>> missingComments = new ArrayList<>();
 
-        public CommentCheckResult() { this.diffs = new ArrayList<>(); }
-
-        public int getTotalTables() { return totalTables; }
-        public void setTotalTables(int totalTables) { this.totalTables = totalTables; }
-        public int getMismatchCount() { return mismatchCount; }
-        public void setMismatchCount(int mismatchCount) { this.mismatchCount = mismatchCount; }
-        public List<CommentDiff> getDiffs() { return diffs; }
-        public void setDiffs(List<CommentDiff> diffs) { this.diffs = diffs; }
+        public boolean isConsistent() { return consistent; }
+        public void setConsistent(boolean consistent) { this.consistent = consistent; }
+        public List<Map<String, String>> getMismatches() { return mismatches; }
+        public void setMismatches(List<Map<String, String>> mismatches) { this.mismatches = mismatches; }
+        public List<Map<String, String>> getMissingComments() { return missingComments; }
+        public void setMissingComments(List<Map<String, String>> missingComments) { this.missingComments = missingComments; }
     }
 
     /**
-     * 单表注释差异
+     * SQL 解析错误信息
      */
-    public static class CommentDiff {
-        private String tableName;
-        private String fieldName;
-        private String expected;
-        private String actual;
+    public static class ParseErrorInfo {
+        private String sqlPreview;
+        private String errorMessage;
 
-        public String getTableName() { return tableName; }
-        public void setTableName(String tableName) { this.tableName = tableName; }
-        public String getFieldName() { return fieldName; }
-        public void setFieldName(String fieldName) { this.fieldName = fieldName; }
-        public String getExpected() { return expected; }
-        public void setExpected(String expected) { this.expected = expected; }
-        public String getActual() { return actual; }
-        public void setActual(String actual) { this.actual = actual; }
-    }
-
-    /**
-     * 同步结果
-     */
-    public static class SyncResult {
-        private int total;
-        private int success;
-        private int failed;
-        private List<String> errors;
-
-        public SyncResult() { this.errors = new ArrayList<>(); }
-
-        public int getTotal() { return total; }
-        public void setTotal(int total) { this.total = total; }
-        public int getSuccess() { return success; }
-        public void setSuccess(int success) { this.success = success; }
-        public int getFailed() { return failed; }
-        public void setFailed(int failed) { this.failed = failed; }
-        public List<String> getErrors() { return errors; }
-        public void setErrors(List<String> errors) { this.errors = errors; }
-    }
-
-    // ===== 兼容性方法 =====
-
-    /** @deprecated 仅用于旧版 JSON 序列化兼容 */
-    @Deprecated
-    public Map<String, Object> toLegacyMap() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("dbType", dbType);
-        map.put("scriptCount", scriptCount);
-        map.put("syncSqls", syncSqls);
-        if (schemaResult != null) {
-            Map<String, Object> sr = new HashMap<>();
-            sr.put("totalTables", schemaResult.totalTables);
-            sr.put("matchedTables", schemaResult.matchedTables);
-            sr.put("mismatchedTables", schemaResult.mismatchedTables);
-            sr.put("onlyInScript", schemaResult.onlyInScript);
-            sr.put("onlyInDatabase", schemaResult.onlyInDatabase);
-            map.put("schemaResult", sr);
-        }
-        return map;
+        public String getSqlPreview() { return sqlPreview; }
+        public void setSqlPreview(String sqlPreview) { this.sqlPreview = sqlPreview; }
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     }
 }

@@ -83,6 +83,12 @@
             <artifactId>hutool-all</artifactId>
         </dependency>
 
+        <!-- JSqlParser（SQL 解析） -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+        </dependency>
+
         <!-- AWS S3 OSS -->
         <dependency>
             <groupId>com.amazonaws</groupId>
@@ -93,6 +99,16 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.pagehelper</groupId>
+            <artifactId>pagehelper</artifactId>
+            <version>6.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-security-api</artifactId>
         </dependency>
     </dependencies>
 </project>
