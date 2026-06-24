@@ -1,0 +1,65 @@
+<configuration scan="true" scanPeriod="5 seconds">
+
+  <!--包含Spring boot对logback日志的默认配置-->
+  <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+  <!--	<springProperty scope="context" name="logPath" source="logging.path" defaultValue="./logs"/>-->
+  <!--	<springProperty scope="context" name="springAppName" source="spring.application.name"  defaultValue="springboot-templates"/>-->
+  <!--<springProperty scope="context" name="serverPort" source="server.port" defaultValue="19003"/>-->
+  <!--	<springProperty scope="context" name="logbackLoglevel" source="logging.level.root" defaultValue="info"/>-->
+
+  <property name="logPath" value="../logs"/>
+  <property name="springAppName" value="liquidity-auth"/>
+  <property name="serverPort" value="28085"/>
+  <property name="logbackLoglevel" value="info"/>
+
+  <!-- 彩色日志格式 -->
+  <property name="CONSOLE_LOG_PATTERN" value="${CONSOLE_LOG_PATTERN:-%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}" />
+  <!-- Console 输出设置 -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+      <charset>utf8</charset>
+    </encoder>
+  </appender>
+  <!-- File 输出设置 -->
+  <appender name="ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <prudent>true</prudent>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${logPath}/%d{yyyy-MM-dd}/${springAppName}_${serverPort}_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <maxHistory>20</maxHistory>
+      <timeBasedFileNamingAndTriggeringPolicy	class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <maxFileSize>50MB</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%date %level [%thread] %logger.%class{0}#%method[%file:%line] %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- 异步输出日志：AsyncAppender -->
+  <!-- discardingThreshold缺省配置下，当BlockingQueue还有20%容量，将丢弃TRACE、DEBUG和INFO级别的event，只保留WARN和ERROR级别的event。为了保持所有的events，即不丢失日志，可设置该值为0 ，也可设定为其他值n，当队列容量小于n时则开始丢弃对应级别event-->
+  <!-- queueSize队列长度， 默认为 256 -->
+  <!-- neverBlockfalse:阻塞（默认值）；true：不阻塞（在队列满时可能会出现部分event丢失） -->
+  <!-- includeCallerDatafalse:提取调用者信息（性能有少量损耗）；true：不提取调用者信息 -->
+  <!-- appender引用的输出方式 -->
+
+  <!--<appender name="QUEUE" class="ch.qos.logback.classic.AsyncAppender">-->
+  <!--<discardingThreshold>10</discardingThreshold>-->
+  <!--<queueSize>10000</queueSize>-->
+  <!--<neverBlock>false</neverBlock>-->
+  <!--<includeCallerData>true</includeCallerData>-->
+  <!--<appender-ref ref = "ROLLING"/>-->
+  <!--</appender>-->
+
+  <!--脱敏配置-->
+  <!--<conversionRule conversionWord="msg" converterClass="com.dcits.galaxy.core.sensitive.SensitiveDataConverter"/>-->
+
+  <root level="${logbackLoglevel}">
+    <appender-ref ref="ROLLING" />
+    <appender-ref ref="STDOUT" />
+  </root>
+
+  <logger name="com.netflix.loadbalancer.BaseLoadBalancer" level="error"/>
+  <logger name="com.ctrip.framework.apollo" level="error"/>
+
+</configuration>

@@ -220,9 +220,6 @@ public class TokenManager {
         }
 
         ApiKeyDO keyDO = apiKeyService.validateKey(apiKey);
-        if (keyDO == null) {
-            throw new RuntimeException("API Key 无效");
-        }
 
         // 查询用户信息
         UserDetails userDetails = userDetailsService.loadUserByUsername(keyDO.getUsername());
@@ -248,6 +245,9 @@ public class TokenManager {
 
         // 设置当前会话到 ThreadLocal
         setCurrentSession(session);
+
+        // 同步设置 SecurityContextHolder
+        SecurityContextHolder.setCurrentUser(userDetails);
 
         log.debug("API Key 认证通过: user={}", keyDO.getUsername());
         return session;

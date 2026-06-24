@@ -19,14 +19,16 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, username, api_key, name, status, expire_time, last_used_time, create_time, update_time, create_by, update_by
+        id, user_id, username, api_key, name, status,
+        expire_time, last_used_time, create_time, update_time,
+        create_by, update_by
     </sql>
 
     <!-- 根据 API Key 查找 -->
     <select id="findByApiKey" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM sys_api_key
-        WHERE api_key = #{apiKey} AND status = 1
+        WHERE api_key = #{apiKey}
     </select>
 
     <!-- 根据 ID 查找 -->
@@ -36,18 +38,25 @@
         WHERE id = #{id}
     </select>
 
-    <!-- 根据用户名查找所有 API Key -->
-    <select id="findByUsername" resultMap="BaseResultMap">
+    <!-- 根据用户 ID 查询所有 API Key -->
+    <select id="findByUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM sys_api_key
-        WHERE username = #{username}
+        WHERE user_id = #{userId}
         ORDER BY create_time DESC
     </select>
 
     <!-- 保存 API Key -->
     <insert id="save" parameterType="io.github.openground.common.security.ApiKeyDO">
-        INSERT INTO sys_api_key (id, user_id, username, api_key, name, status, expire_time, last_used_time, create_time, update_time, create_by, update_by)
-        VALUES (#{id}, #{userId}, #{username}, #{apiKey}, #{name}, #{status}, #{expireTime}, #{lastUsedTime}, #{createTime}, #{updateTime}, #{createBy}, #{updateBy})
+        INSERT INTO sys_api_key (
+            id, user_id, username, api_key, name, status,
+            expire_time, last_used_time, create_time, update_time,
+            create_by, update_by
+        ) VALUES (
+            #{id}, #{userId}, #{username}, #{apiKey}, #{name}, #{status},
+            #{expireTime}, #{lastUsedTime}, #{createTime}, #{updateTime},
+            #{createBy}, #{updateBy}
+        )
     </insert>
 
     <!-- 更新 API Key -->
@@ -64,7 +73,14 @@
         WHERE id = #{id}
     </update>
 
-    <!-- 根据 ID 删除 API Key -->
+    <!-- 更新最后使用时间 -->
+    <update id="updateLastUsedTime">
+        UPDATE sys_api_key
+        SET last_used_time = #{lastUsedTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 物理删除 -->
     <delete id="deleteById">
         DELETE FROM sys_api_key WHERE id = #{id}
     </delete>
@@ -73,5 +89,20 @@
     <delete id="deleteByUsername">
         DELETE FROM sys_api_key WHERE username = #{username}
     </delete>
+
+    <!-- 统计 API Key 值是否存在 -->
+    <select id="countByApiKey" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_api_key
+        WHERE api_key = #{apiKey}
+    </select>
+
+    <!-- 统计用户有效 API Key 数量 -->
+    <select id="countActiveByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_api_key
+        WHERE user_id = #{userId}
+          AND status = '0'
+    </select>
 
 </mapper>

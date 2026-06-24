@@ -13,9 +13,11 @@ import io.github.openground.common.dbcheck.checker.CommentChecker;
 import io.github.openground.common.dbcheck.checker.DataChecker;
 import io.github.openground.common.dbcheck.checker.DbSchemaComparator;
 import lombok.extern.slf4j.Slf4j;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
@@ -29,6 +31,8 @@ import javax.sql.DataSource;
  */
 @Slf4j
 @Configuration
+@ComponentScan(basePackages = "io.github.openground.common.dbcheck")
+@MapperScan(basePackages = "io.github.openground.common.dbcheck.dao")
 @EnableConfigurationProperties(DbCheckProperties.class)
 @ConditionalOnProperty(name = "ground.db-check.enabled", havingValue = "true", matchIfMissing = true)
 public class DbCheckAutoConfiguration {

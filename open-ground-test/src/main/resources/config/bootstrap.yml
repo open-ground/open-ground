@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: imap-center-auth
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      username: nacos
+      password: Sm@rtLMC
+      server-addr: 10.7.29.102:8848
+      config:
+        namespace: IMAP
+        group: ${spring.profiles.active}
+        file-extension: yaml
+      discovery:
+        namespace: ${spring.profiles.active}
+        group: ${spring.profiles.active}
+  config:
+    import:
+      # 导入 Nacos 配置,共享配置
+      - optional:nacos:base-auth.yaml?group=DEFAULT_GROUP&refreshable=true
+      # 导入环境特定的 Nacos 配置
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml
+
+

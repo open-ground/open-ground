@@ -40,5 +40,8 @@ public class AuthProperties {
 
         /** API Key 默认过期天数 */
         private Integer expireDays = 30;
+
+        /** 单个用户最大有效 Key 数量 */
+        private Integer maxActiveKeys = 10;
     }
 }

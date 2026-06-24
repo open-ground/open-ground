@@ -1,10 +1,7 @@
 package io.github.openground.test;
 
-import io.github.openground.common.log.config.EnableOptLog;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
 
 /**
  * Open Ground 测试应用启动类
@@ -14,11 +11,8 @@ import org.springframework.context.annotation.ComponentScan;
  * @author open-ground
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"io.github.openground", "io.github.openground.test"})
-@MapperScan("io.github.openground.common.security.mapper")
-@EnableOptLog
-public class TestApplication {
 
+public class TestApplication {
     public static void main(String[] args) {
         SpringApplication.run(TestApplication.class, args);
     }

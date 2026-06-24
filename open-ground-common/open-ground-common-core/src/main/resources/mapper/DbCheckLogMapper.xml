@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.openground.common.dbcheck.dao.DbCheckLogDao">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.common.dbcheck.model.DbCheckLogDO">
+        <id property="id" column="id"/>
+        <result property="operationType" column="operation_type"/>
+        <result property="dbType" column="db_type"/>
+        <result property="scriptCount" column="script_count"/>
+        <result property="mismatchCount" column="mismatch_count"/>
+        <result property="extraRowCount" column="extra_row_count"/>
+        <result property="sqlCount" column="sql_count"/>
+        <result property="executed" column="executed"/>
+        <result property="success" column="success"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="costMs" column="cost_ms"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, operation_type, db_type, script_count, mismatch_count, extra_row_count,
+        sql_count, executed, success, error_message, cost_ms,
+        create_by, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="io.github.openground.common.dbcheck.model.DbCheckLogDO">
+        INSERT INTO sys_db_check_log (
+            id, operation_type, db_type, script_count, mismatch_count, extra_row_count,
+            sql_count, executed, success, error_message, cost_ms,
+            create_by, create_time, update_time
+        ) VALUES (
+            #{id}, #{operationType}, #{dbType}, #{scriptCount}, #{mismatchCount}, #{extraRowCount},
+            #{sqlCount}, #{executed}, #{success}, #{errorMessage}, #{costMs},
+            #{createBy}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="selectById" parameterType="string" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_db_check_log
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectList" parameterType="io.github.openground.common.dbcheck.model.DbCheckLogDO" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_db_check_log
+        <where>
+            <if test="operationType != null and operationType != ''">
+                AND operation_type = #{operationType}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="count" parameterType="io.github.openground.common.dbcheck.model.DbCheckLogDO" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_db_check_log
+        <where>
+            <if test="operationType != null and operationType != ''">
+                AND operation_type = #{operationType}
+            </if>
+        </where>
+    </select>
+
+</mapper>

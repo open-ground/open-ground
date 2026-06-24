@@ -61,9 +61,6 @@ public class DbCheckController {
     private List<DbCheckDatasourceProvider> datasourceProviders;
 
     @Autowired
-    private SecurityContextHolder securityContextHolder;
-
-    @Autowired
     private AsyncCheckService asyncCheckService;
 
     @Autowired
@@ -796,7 +793,7 @@ public class DbCheckController {
      */
     private String getCurrentUserDisplay() {
         try {
-            return securityContextHolder.getCurrentUserId() + "/" + securityContextHolder.getCurrentUsername();
+            return SecurityContextHolder.getCurrentUserId() + "/" + SecurityContextHolder.getCurrentUsername();
         } catch (Exception e) {
             log.warn("获取当前用户失败，使用 system 兜底");
         }

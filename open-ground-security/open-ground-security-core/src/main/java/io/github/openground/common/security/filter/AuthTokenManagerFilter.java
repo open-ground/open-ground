@@ -3,6 +3,7 @@ package io.github.openground.common.security.filter;
 import com.alibaba.fastjson.JSON;
 import io.github.openground.base.constant.ErrorCode;
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.common.security.SecurityContextHolder;
 import io.github.openground.common.security.SessionEntity;
 import io.github.openground.common.security.TokenManager;
 import io.github.openground.common.security.config.TokenFilterProperties;
@@ -96,12 +97,15 @@ public class AuthTokenManagerFilter implements Filter {
                 }
                 // 设置当前会话到 ThreadLocal
                 tokenManager.setCurrentSession(session);
+                // 同步设置 SecurityContextHolder
+                SecurityContextHolder.setCurrentUser(tokenManager.getCurrentUser());
             }
 
             chain.doFilter(request, response);
         } finally {
             // 请求结束后清除上下文，防止内存泄漏
             tokenManager.clearCurrentSession();
+            SecurityContextHolder.clear();
         }
     }
 
