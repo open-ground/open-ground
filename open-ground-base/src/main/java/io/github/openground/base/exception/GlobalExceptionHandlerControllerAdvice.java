@@ -1,9 +1,11 @@
 package io.github.openground.base.exception;
 
 import io.github.openground.base.constant.ErrorCode;
+import io.github.openground.base.constant.ErrorCodeMapper;
 import io.github.openground.base.dto.CommonResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +24,11 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @ControllerAdvice
+@RequiredArgsConstructor
 @SuppressWarnings("all")
 public class GlobalExceptionHandlerControllerAdvice {
+
+    private final ErrorCodeMapper errorCodeMapper;
 
     /**
      * 处理业务异常 CommonException
@@ -36,9 +41,10 @@ public class GlobalExceptionHandlerControllerAdvice {
     public ResponseEntity<CommonResult> handleCommonException(HttpServletRequest request, CommonException e) {
         log.error("[URI: {}] 业务异常: {}", request.getRequestURI(), e.getMessage(), e);
 
+        String[] mapped = errorCodeMapper.map(e.getCode(), e.getMessage());
         CommonResult result = new CommonResult();
-        result.setCode(e.getCode());
-        result.setMessage(e.getMessage());
+        result.setCode(mapped[0]);
+        result.setMessage(mapped[1]);
         result.setData(null);
 
         return ResponseEntity.ok(result);
@@ -58,9 +64,10 @@ public class GlobalExceptionHandlerControllerAdvice {
 
         log.warn("参数校验失败: {}", message);
 
+        String[] mapped = errorCodeMapper.map(ErrorCode.PARAMETER_ILLEGAL_ERROR, "参数校验失败: " + message);
         CommonResult result = new CommonResult();
-        result.setCode(ErrorCode.PARAMETER_ILLEGAL_ERROR);
-        result.setMessage("参数校验失败: " + message);
+        result.setCode(mapped[0]);
+        result.setMessage(mapped[1]);
         result.setData(null);
 
         return ResponseEntity.ok(result);
@@ -80,9 +87,10 @@ public class GlobalExceptionHandlerControllerAdvice {
 
         log.warn("参数绑定失败: {}", message);
 
+        String[] mapped = errorCodeMapper.map(ErrorCode.PARAMETER_ILLEGAL_ERROR, "参数校验失败: " + message);
         CommonResult result = new CommonResult();
-        result.setCode(ErrorCode.PARAMETER_ILLEGAL_ERROR);
-        result.setMessage("参数校验失败: " + message);
+        result.setCode(mapped[0]);
+        result.setMessage(mapped[1]);
         result.setData(null);
 
         return ResponseEntity.ok(result);
@@ -98,9 +106,10 @@ public class GlobalExceptionHandlerControllerAdvice {
     public ResponseEntity<CommonResult> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("非法参数: {}", e.getMessage());
 
+        String[] mapped = errorCodeMapper.map(ErrorCode.PARAMETER_ILLEGAL_ERROR, "参数错误: " + e.getMessage());
         CommonResult result = new CommonResult();
-        result.setCode(ErrorCode.PARAMETER_ILLEGAL_ERROR);
-        result.setMessage("参数错误: " + e.getMessage());
+        result.setCode(mapped[0]);
+        result.setMessage(mapped[1]);
         result.setData(null);
 
         return ResponseEntity.ok(result);
@@ -130,9 +139,10 @@ public class GlobalExceptionHandlerControllerAdvice {
             return null;
         }
 
+        String[] mapped = errorCodeMapper.map(ErrorCode.SERVER_INTERNAL_ERROR, "系统内部错误: " + e.getMessage());
         CommonResult result = new CommonResult();
-        result.setCode(ErrorCode.SERVER_INTERNAL_ERROR);
-        result.setMessage("系统内部错误: " + e.getMessage());
+        result.setCode(mapped[0]);
+        result.setMessage(mapped[1]);
         result.setData(null);
 
         return ResponseEntity.ok(result);
