@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-land</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>open-ground-land-core</artifactId>
+    <packaging>jar</packaging>
+    <name>Open Ground Land Core</name>
+    <description>Land 批量调度核心模块 —— Controller 实现 + Service + Mapper + Entity + MyBatis XML</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-land-api</artifactId>
+        </dependency>
+
+        <!-- Open Ground Starter Common：一键引入 Web/MyBatis/Redis/PageHelper/Druid/SpringDoc/JWT/工具库/操作日志/DB Check -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-starter-common</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- 操作日志 Feign 发送器 -->
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-common-springcloud</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-net</groupId>
+            <artifactId>commons-net</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.ethz.ganymed</groupId>
+            <artifactId>ganymed-ssh2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.18.0</version>
+        </dependency>
+
+    </dependencies>
+</project>

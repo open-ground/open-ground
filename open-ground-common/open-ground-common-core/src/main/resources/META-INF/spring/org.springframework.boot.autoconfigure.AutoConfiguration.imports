@@ -1,4 +1,0 @@
-io.github.openground.common.filter.config.RequestFilterAutoConfiguration
-io.github.openground.common.keygen.config.KeyGenAutoConfiguration
-io.github.openground.common.oss.OssAutoConfiguration
-io.github.openground.common.dbcheck.config.DbCheckAutoConfiguration

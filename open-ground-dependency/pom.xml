@@ -39,6 +39,10 @@
         <UserAgentUtils.version>1.2.4</UserAgentUtils.version>
         <logback.version>1.5.18</logback.version>
         <jsqlparser.version>4.7</jsqlparser.version>
+        <!-- FTP/SFTP -->
+        <commons-net.version>3.9.0</commons-net.version>
+        <jsch.version>0.1.55</jsch.version>
+        <ganymed-ssh2.version>262</ganymed-ssh2.version>
     </properties>
 
     <dependencyManagement>
@@ -272,6 +276,50 @@
                 <groupId>com.github.jsqlparser</groupId>
                 <artifactId>jsqlparser</artifactId>
                 <version>${jsqlparser.version}</version>
+            </dependency>
+
+            <!-- Open Ground Land 模块 -->
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-job</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-dispatch</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-task</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- FTP/SFTP -->
+            <dependency>
+                <groupId>commons-net</groupId>
+                <artifactId>commons-net</artifactId>
+                <version>${commons-net.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jcraft</groupId>
+                <artifactId>jsch</artifactId>
+                <version>${jsch.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.ethz.ganymed</groupId>
+                <artifactId>ganymed-ssh2</artifactId>
+                <version>${ganymed-ssh2.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

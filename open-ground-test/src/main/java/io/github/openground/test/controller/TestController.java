@@ -29,8 +29,6 @@ import java.util.Map;
 @RequestMapping("/test")
 public class TestController {
 
-    @Autowired
-    private KeyGenerator keyGenerator;
 
     @Autowired
     private TokenManager tokenManager;
@@ -89,7 +87,7 @@ public class TestController {
     @PostMapping("/user")
     @OptLog(optType = OptType.INSERT, optRemark = "测试新增用户")
     public CommonResult<Map<String, Object>> createUser(@RequestBody Map<String, Object> user) {
-        Long userId = keyGenerator.internalKey();
+        Long userId = KeyGenerator.getInternalKey() ;
         user.put("id", userId);
         log.info("创建用户: {}", user);
         return CommonResult.success(user);
@@ -102,7 +100,7 @@ public class TestController {
     @GetMapping("/key/next")
     @OptLog(optType = OptType.QUERY, optRemark = "生成主键序号")
     public CommonResult<Map<String, String>> nextKey(@RequestParam(defaultValue = "TEST_SEQ_01") String seqName) {
-        String key = keyGenerator.nextKey(seqName);
+        String key = KeyGenerator.getBusinessKey(seqName);
         Map<String, String> result = new HashMap<>();
         result.put("seqName", seqName);
         result.put("key", key);
@@ -116,7 +114,7 @@ public class TestController {
     @GetMapping("/key/business")
     @OptLog(optType = OptType.QUERY, optRemark = "生成业务流水号")
     public CommonResult<Map<String, String>> businessKey(@RequestParam(defaultValue = "TEST_BUSINESS_KEY") String seqName) {
-        String key = keyGenerator.businessKey(seqName);
+        String key = KeyGenerator.getBusinessKey(seqName);
         Map<String, String> result = new HashMap<>();
         result.put("seqName", seqName);
         result.put("key", key);
@@ -130,7 +128,7 @@ public class TestController {
     @GetMapping("/key/snowflake")
     @OptLog(optType = OptType.QUERY, optRemark = "生成雪花算法 ID")
     public CommonResult<Map<String, Object>> snowflakeId() {
-        Long id = keyGenerator.internalKey();
+        Long id = KeyGenerator.getInternalKey();
         Map<String, Object> result = new HashMap<>();
         result.put("id", id);
         result.put("type", "snowflake");

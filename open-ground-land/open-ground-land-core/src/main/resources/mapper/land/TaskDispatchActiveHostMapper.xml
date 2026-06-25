@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskDispatchActiveHostMapper">
+
+    <!-- 更新当前主机的活动状态 -->
+    <update id="updateActiveHost">
+        update TASK_DISPATCH_ACTIVE_HOST
+        <set>
+            <if test="activeTime != null">
+                ACTIVE_TIME = #{activeTime},
+            </if>
+            <if test="activeStatus != null">
+                ACTIVE_STATUS = #{activeStatus},
+            </if>
+        </set>
+        where HOST_IP = #{hostIp}
+        <if test="cpsGroup != null and cpsGroup != ''">
+            AND CPS_GROUP = #{cpsGroup}
+        </if>
+    </update>
+
+    <select id="selectActiveHostStatus" resultType="java.util.Map">
+        SELECT
+        CPS_GROUP,HOST_IP,ACTIVE_TIME,ACTIVE_STATUS,SYS_EOD_DATE
+        FROM TASK_DISPATCH_ACTIVE_HOST WHERE HOST_IP = #{hostIp}
+        <if test="cpsGroup != null and cpsGroup != ''">
+            AND CPS_GROUP = #{cpsGroup}
+        </if>
+    </select>
+
+    <!-- 获取所有主机列表 -->
+    <select id="hostListlistPage" resultType="java.util.Map">
+        SELECT HOST_IP,ACTIVE_STATUS,ACTIVE_TIME, SYS_EOD_DATE, CPS_GROUP FROM TASK_DISPATCH_ACTIVE_HOST
+        <where>
+            <if test="hostIp != null and hostIp != ''">
+                HOST_IP = #{hostIp}
+            </if>
+            <if test="cpsGroup != null and cpsGroup != ''">
+                AND CPS_GROUP = #{cpsGroup}
+            </if>
+        </where>
+        ORDER BY ACTIVE_TIME DESC
+    </select>
+
+    <insert id="insertActiveHost">
+        insert into TASK_DISPATCH_ACTIVE_HOST (HOST_IP, ACTIVE_TIME, ACTIVE_STATUS, SYS_EOD_DATE, CPS_GROUP) values (#{hostIp}, #{activeTime}, #{activeStatus},#{sysEodDate} ,#{cpsGroup})
+    </insert>
+
+    <!-- 获得无法正常工作的主机IP -->
+    <select id="selectHostIpByActiveTime" resultType="String">
+        SELECT
+            HOST_IP
+        FROM
+            TASK_DISPATCH_ACTIVE_HOST
+        WHERE
+            CPS_GROUP = #{cpsGroup}
+            AND ( ACTIVE_TIME <![CDATA[<]]> #{activeTime} OR ACTIVE_STATUS = 'OFF' )
+        UNION
+        SELECT DISTINCT
+            EXE_HOST_IP AS HOST_IP
+        FROM
+            TASK_DISPATCH_CONFIG
+        WHERE
+            CPS_GROUP = #{cpsGroup}
+            AND EXE_HOST_IP NOT IN ( SELECT HOST_IP FROM TASK_DISPATCH_ACTIVE_HOST )
+    </select>
+
+    <!-- 根据taskId获取可以提供服务的主机，排除掉有该任务正在执行或待执行的 -->
+    <select id="selectServiceHostIpByTask" resultType="String">
+        SELECT HOST_IP FROM TASK_DISPATCH_ACTIVE_HOST WHERE CPS_GROUP = #{cpsGroup}
+        AND ACTIVE_TIME <![CDATA[>]]> #{activeTime} AND ACTIVE_STATUS = 'ON'
+        AND HOST_IP != #{exeingHostIp} AND HOST_IP NOT IN
+         (select distinct LOG.EXE_CUR_HOST_IP FROM TASK_DISPATCH_EXE_LOG LOG
+         WHERE LOG.TASK_ID = #{exeingTaskId} AND LOG.EXE_STATUS IN ('R','P'))
+    </select>
+
+    <!-- 获取指定 cpsGroup 下所有状态为 ON 的活跃主机 IP -->
+    <select id="selectActiveHostsByCpsGroup" resultType="String">
+        SELECT HOST_IP FROM TASK_DISPATCH_ACTIVE_HOST
+        WHERE CPS_GROUP = #{cpsGroup}
+          AND ACTIVE_STATUS = 'ON'
+        ORDER BY ACTIVE_TIME DESC
+    </select>
+
+    <!-- 当主机不可提供服务时，将代办任务的执行主机IP更改成可提供服务的主机 -->
+    <update id="updateHostIp">
+        update TASK_DISPATCH_EXE_LOG set EXE_CUR_HOST_IP = #{activeHostIp}, EXTEND5 = #{extend5}
+        where EXE_CUR_HOST_IP in
+        <foreach collection="list" separator="," open="(" close=")" item="item">
+            #{item}
+        </foreach>
+        and EXE_STATUS IN ('P','W')
+    </update>
+
+    <update id="updateSysEodDate" parameterType="java.util.Map">
+        UPDATE TASK_DISPATCH_ACTIVE_HOST
+        <set>
+            <if test="sysEodDate != null">
+                SYS_EOD_DATE = #{sysEodDate}
+            </if>
+        </set>
+        WHERE CPS_GROUP IN
+        <foreach item="item" index="index" collection="cpsGroups" open="(" separator="," close=")">
+            #{item, jdbcType=VARCHAR}
+        </foreach>
+        <if test="hostIp != null">
+            AND HOST_IP = #{hostIp}
+        </if>
+    </update>
+
+</mapper>

@@ -42,6 +42,7 @@
         <module>open-ground-security</module>
         <module>open-ground-starter</module>
         <module>open-ground-test</module>
+        <module>open-ground-land</module>
     </modules>
 
     <properties>

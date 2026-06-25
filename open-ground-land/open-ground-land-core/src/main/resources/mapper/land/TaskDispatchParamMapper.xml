@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskDispatchParamMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.land.common.entity.TaskDispatchParam">
+        <result column="COMPANY" property="company" jdbcType="VARCHAR"/>
+        <result column="PARAM_ID" property="paramId" jdbcType="VARCHAR"/>
+        <result column="PARAM_NAME" property="paramName" jdbcType="VARCHAR"/>
+        <result column="HOST_IP" property="hostIp" jdbcType="VARCHAR"/>
+        <result column="PORT" property="port" jdbcType="VARCHAR"/>
+        <result column="USERNAME" property="username" jdbcType="VARCHAR"/>
+        <result column="PASSWORD" property="password" jdbcType="VARCHAR"/>
+        <result column="ENCODING" property="encoding" jdbcType="VARCHAR"/>
+        <result column="IS_DYNAMIC_PATH" property="isDynamicPath" jdbcType="VARCHAR"/>
+        <result column="PATH_ROLE" property="pathRole" jdbcType="VARCHAR"/>
+        <result column="REMOTE_PATH" property="remotePath" jdbcType="VARCHAR"/>
+        <result column="IS_DYNAME_NAME" property="isDynameName" jdbcType="VARCHAR"/>
+        <result column="NAME_ROLE" property="nameRole" jdbcType="VARCHAR"/>
+        <result column="FILE_NAME" property="fileName" jdbcType="VARCHAR"/>
+        <result column="LOCAL_PATH" property="localPath" jdbcType="VARCHAR"/>
+        <result column="INSERT_TIME" property="insertTime" jdbcType="DATE"/>
+        <result column="UPDATE_TIME" property="updateTime" jdbcType="DATE"/>
+        <result column="IS_IGNORE" property="isIgnore" jdbcType="VARCHAR"/>
+        <result column="EXTEND1" property="extend1" jdbcType="VARCHAR"/>
+        <result column="EXTEND2" property="extend2" jdbcType="VARCHAR"/>
+        <result column="EXTEND3" property="extend3" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Table_Name">TASK_DISPATCH_PARAM</sql>
+
+    <sql id="Base_Column">
+        COMPANY, PARAM_ID, PARAM_NAME, HOST_IP, PORT, USERNAME, PASSWORD,
+        ENCODING, IS_DYNAMIC_PATH, PATH_ROLE, REMOTE_PATH, IS_DYNAME_NAME,
+        NAME_ROLE, FILE_NAME, LOCAL_PATH, INSERT_TIME, UPDATE_TIME,
+        IS_IGNORE, EXTEND1, EXTEND2, EXTEND3
+    </sql>
+
+    <sql id="Base_Where">
+        <trim suffixOverrides="AND">
+            <if test="company != null and company != ''">COMPANY = #{company} AND</if>
+            <if test="paramId != null and paramId != ''">PARAM_ID = #{paramId} AND</if>
+            <if test="paramName != null and paramName != ''">PARAM_NAME = #{paramName} AND</if>
+            <if test="hostIp != null and hostIp != ''">HOST_IP = #{hostIp} AND</if>
+            <if test="port != null and port != ''">PORT = #{port} AND</if>
+            <if test="username != null and username != ''">USERNAME = #{username} AND</if>
+            <if test="password != null and password != ''">PASSWORD = #{password} AND</if>
+            <if test="encoding != null and encoding != ''">ENCODING = #{encoding} AND</if>
+            <if test="isDynamicPath != null and isDynamicPath != ''">IS_DYNAMIC_PATH = #{isDynamicPath} AND</if>
+            <if test="pathRole != null and pathRole != ''">PATH_ROLE = #{pathRole} AND</if>
+            <if test="remotePath != null and remotePath != ''">REMOTE_PATH = #{remotePath} AND</if>
+            <if test="isDynameName != null and isDynameName != ''">IS_DYNAME_NAME = #{isDynameName} AND</if>
+            <if test="nameRole != null and nameRole != ''">NAME_ROLE = #{nameRole} AND</if>
+            <if test="fileName != null and fileName != ''">FILE_NAME = #{fileName} AND</if>
+            <if test="localPath != null and localPath != ''">LOCAL_PATH = #{localPath} AND</if>
+            <if test="insertTime != null">INSERT_TIME = #{insertTime} AND</if>
+            <if test="updateTime != null">UPDATE_TIME = #{updateTime} AND</if>
+            <if test="isIgnore != null and isIgnore != ''">IS_IGNORE = #{isIgnore} AND</if>
+            <if test="extend1 != null and extend1 != ''">EXTEND1 = #{extend1} AND</if>
+            <if test="extend2 != null and extend2 != ''">EXTEND2 = #{extend2} AND</if>
+            <if test="extend3 != null and extend3 != ''">EXTEND3 = #{extend3} AND</if>
+        </trim>
+    </sql>
+
+    <sql id="Base_Select">
+        SELECT <include refid="Base_Column"/>
+        FROM <include refid="Table_Name"/>
+        <where><include refid="Base_Where"/></where>
+    </sql>
+
+    <!-- 分页查询（来自 _ext.xml） -->
+    <select id="selectByPage" resultMap="BaseResultMap">
+        <include refid="Base_Select"/>
+    </select>
+
+    <!-- 根据主键查询 -->
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column"/>
+        FROM <include refid="Table_Name"/>
+        <where>
+            <trim suffixOverrides="AND">
+                <if test="paramId != null and paramId != ''">PARAM_ID = #{paramId} AND</if>
+            </trim>
+        </where>
+    </select>
+
+    <!-- 查询单个（来自 _ext.xml） -->
+    <select id="selectOne" resultMap="BaseResultMap">
+        <include refid="Base_Select"/>
+    </select>
+</mapper>

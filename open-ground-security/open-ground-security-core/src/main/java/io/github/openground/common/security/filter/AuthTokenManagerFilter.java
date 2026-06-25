@@ -67,7 +67,7 @@ public class AuthTokenManagerFilter implements Filter {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
-        String uri = request.getRequestURI();
+        String uri = request.getServletPath();
 
         // 白名单路径直接放行
         if (isWhiteListed(uri)) {

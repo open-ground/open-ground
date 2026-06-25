@@ -1,0 +1,4 @@
+io.github.openground.land.config.TaskConfiguration
+io.github.openground.land.config.LandDataSourceConfig
+io.github.openground.land.config.DefaultSqlSessionFactoryPrimaryConfig
+io.github.openground.land.config.LandCoreAutoConfiguration

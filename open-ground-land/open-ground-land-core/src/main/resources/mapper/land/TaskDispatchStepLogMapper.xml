@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskDispatchStepLogMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.land.common.entity.TaskDispatchStepLog">
+        <result column="TASK_PLAN_ID" property="taskPlanId" jdbcType="VARCHAR"/>
+        <result column="STEP_ID" property="stepId" jdbcType="VARCHAR"/>
+        <result column="TASK_ID" property="taskId" jdbcType="VARCHAR"/>
+        <result column="EXE_URL" property="exeUrl" jdbcType="VARCHAR"/>
+        <result column="SEGMENT" property="segment" jdbcType="VARCHAR"/>
+        <result column="THREAD_NAME" property="threadName" jdbcType="VARCHAR"/>
+        <result column="INFO_MESSAGE" property="infoMessage" jdbcType="VARCHAR"/>
+        <result column="EXCEPTION_MESSAGE" property="exceptionMessage" jdbcType="VARCHAR"/>
+        <result column="STEP_STATUS" property="stepStatus" jdbcType="VARCHAR"/>
+        <result column="MT_TIME" property="mtTime" jdbcType="VARCHAR"/>
+        <result column="COMPANY" property="company" jdbcType="VARCHAR"/>
+        <result column="EXTEND1" property="extend1" jdbcType="VARCHAR"/>
+        <result column="EXTEND2" property="extend2" jdbcType="VARCHAR"/>
+        <result column="EXTEND3" property="extend3" jdbcType="VARCHAR"/>
+        <result column="EXTEND4" property="extend4" jdbcType="VARCHAR"/>
+        <result column="EXTEND5" property="extend5" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Table_Name">TASK_DISPATCH_STEP_LOG</sql>
+
+    <sql id="Base_Column">
+        TASK_PLAN_ID, STEP_ID, TASK_ID, EXE_URL, SEGMENT, THREAD_NAME,
+        INFO_MESSAGE, EXCEPTION_MESSAGE, STEP_STATUS, MT_TIME, COMPANY,
+        EXTEND1, EXTEND2, EXTEND3, EXTEND4, EXTEND5
+    </sql>
+
+    <sql id="Base_Where">
+        <trim suffixOverrides="AND">
+            <if test="taskPlanId != null and taskPlanId != ''">TASK_PLAN_ID = #{taskPlanId} AND</if>
+            <if test="stepId != null and stepId != ''">STEP_ID = #{stepId} AND</if>
+            <if test="taskId != null and taskId != ''">TASK_ID = #{taskId} AND</if>
+            <if test="stepStatus != null and stepStatus != ''">STEP_STATUS = #{stepStatus} AND</if>
+            <if test="company != null and company != ''">COMPANY = #{company} AND</if>
+        </trim>
+    </sql>
+
+    <sql id="Base_Select">
+        SELECT <include refid="Base_Column"/>
+        FROM <include refid="Table_Name"/>
+        <where><include refid="Base_Where"/></where>
+    </sql>
+
+    <insert id="insert" parameterType="io.github.openground.land.common.entity.TaskDispatchStepLog">
+        INSERT INTO <include refid="Table_Name"/>
+        (<include refid="Base_Column"/>)
+        VALUES
+        (#{taskPlanId,jdbcType=VARCHAR}, #{stepId,jdbcType=VARCHAR}, #{taskId,jdbcType=VARCHAR},
+         #{exeUrl,jdbcType=VARCHAR}, #{segment,jdbcType=VARCHAR}, #{threadName,jdbcType=VARCHAR},
+         #{infoMessage,jdbcType=VARCHAR}, #{exceptionMessage,jdbcType=VARCHAR}, #{stepStatus,jdbcType=VARCHAR},
+         #{mtTime,jdbcType=VARCHAR}, #{company,jdbcType=VARCHAR},
+         #{extend1,jdbcType=VARCHAR}, #{extend2,jdbcType=VARCHAR}, #{extend3,jdbcType=VARCHAR},
+         #{extend4,jdbcType=VARCHAR}, #{extend5,jdbcType=VARCHAR})
+    </insert>
+
+    <select id="selectOne" resultMap="BaseResultMap">
+        <include refid="Base_Select"/>
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        <include refid="Base_Select"/>
+    </select>
+</mapper>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskEtlTableConfMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.land.common.entity.TaskEtlTableConf">
+        <result column="ID" property="id" jdbcType="VARCHAR"/>
+        <result column="TABLE_NAME" property="tableName" jdbcType="VARCHAR"/>
+        <result column="FILE_NAME" property="fileName" jdbcType="VARCHAR"/>
+        <result column="FILE_STEP" property="fileStep" jdbcType="INTEGER"/>
+        <result column="FILE_SPLIT" property="fileSplit" jdbcType="VARCHAR"/>
+        <result column="FILE_COL_NUM" property="fileColNum" jdbcType="INTEGER"/>
+        <result column="EXE_STATUS" property="exeStatus" jdbcType="VARCHAR"/>
+        <result column="EXE_MESSAGE" property="exeMessage" jdbcType="VARCHAR"/>
+        <result column="EXE_TIME" property="exeTime" jdbcType="VARCHAR"/>
+        <result column="EXE_IP" property="exeIp" jdbcType="VARCHAR"/>
+        <result column="IS_FULL" property="isFull" jdbcType="VARCHAR"/>
+        <result column="DELETE_SQL" property="deleteSql" jdbcType="VARCHAR"/>
+        <result column="OK_FLAG" property="okFlag" jdbcType="VARCHAR"/>
+        <result column="IS_ERR_STOP" property="isErrStop" jdbcType="VARCHAR"/>
+        <result column="STATUS" property="status" jdbcType="VARCHAR"/>
+        <result column="DATA_CONFIG" property="dataConfig" jdbcType="VARCHAR"/>
+        <result column="EXTEND1" property="extend1" jdbcType="VARCHAR"/>
+        <result column="EXTEND2" property="extend2" jdbcType="VARCHAR"/>
+        <result column="EXTEND3" property="extend3" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Table_Name">TASK_ETL_TABLE_CONF</sql>
+
+    <sql id="Base_Column">
+        ID, TABLE_NAME, FILE_NAME, FILE_STEP, FILE_SPLIT, FILE_COL_NUM,
+        EXE_STATUS, EXE_MESSAGE, EXE_TIME, EXE_IP, IS_FULL, DELETE_SQL,
+        OK_FLAG, IS_ERR_STOP, STATUS, DATA_CONFIG, EXTEND1, EXTEND2, EXTEND3
+    </sql>
+
+    <sql id="comet_step_column">
+        <if test="cometSqlType == 'segment'"> ${cometKeyField} as KEY_FIELD </if>
+        <if test="cometSqlType == 'page'"> *</if>
+    </sql>
+    <sql id="comet_step_where">
+        <if test="cometStart != null and cometEnd != null "> and ${cometKeyField} between #{cometStart} and #{cometEnd} </if>
+    </sql>
+
+    <!-- 分段查询 ETL 配置（来自 _ext.xml） -->
+    <select id="segmentEtlTable" parameterType="java.util.Map" resultType="java.util.Map">
+        SELECT
+        <include refid="comet_step_column" />
+        FROM TASK_ETL_TABLE_CONF WHERE STATUS = 'Y'
+        <if test="tableName != null and tableName != ''">
+            AND TABLE_NAME = #{tableName}
+        </if>
+        <include refid="comet_step_where" />
+    </select>
+
+    <!-- 获取所有有效配置（来自 _ext.xml） -->
+    <select id="getAllConfig" resultMap="BaseResultMap">
+        SELECT * from TASK_ETL_TABLE_CONF WHERE STATUS = 'Y'
+    </select>
+</mapper>

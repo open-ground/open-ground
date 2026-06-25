@@ -2,13 +2,9 @@
 
   <!--包含Spring boot对logback日志的默认配置-->
   <include resource="org/springframework/boot/logging/logback/defaults.xml" />
-  <!--	<springProperty scope="context" name="logPath" source="logging.path" defaultValue="./logs"/>-->
-  <!--	<springProperty scope="context" name="springAppName" source="spring.application.name"  defaultValue="springboot-templates"/>-->
-  <!--<springProperty scope="context" name="serverPort" source="server.port" defaultValue="19003"/>-->
-  <!--	<springProperty scope="context" name="logbackLoglevel" source="logging.level.root" defaultValue="info"/>-->
 
   <property name="logPath" value="../logs"/>
-  <property name="springAppName" value="liquidity-auth"/>
+  <property name="springAppName" value="open-ground"/>
   <property name="serverPort" value="28085"/>
   <property name="logbackLoglevel" value="info"/>
 
@@ -36,24 +32,7 @@
     </encoder>
   </appender>
 
-  <!-- 异步输出日志：AsyncAppender -->
-  <!-- discardingThreshold缺省配置下，当BlockingQueue还有20%容量，将丢弃TRACE、DEBUG和INFO级别的event，只保留WARN和ERROR级别的event。为了保持所有的events，即不丢失日志，可设置该值为0 ，也可设定为其他值n，当队列容量小于n时则开始丢弃对应级别event-->
-  <!-- queueSize队列长度， 默认为 256 -->
-  <!-- neverBlockfalse:阻塞（默认值）；true：不阻塞（在队列满时可能会出现部分event丢失） -->
-  <!-- includeCallerDatafalse:提取调用者信息（性能有少量损耗）；true：不提取调用者信息 -->
-  <!-- appender引用的输出方式 -->
-
-  <!--<appender name="QUEUE" class="ch.qos.logback.classic.AsyncAppender">-->
-  <!--<discardingThreshold>10</discardingThreshold>-->
-  <!--<queueSize>10000</queueSize>-->
-  <!--<neverBlock>false</neverBlock>-->
-  <!--<includeCallerData>true</includeCallerData>-->
-  <!--<appender-ref ref = "ROLLING"/>-->
-  <!--</appender>-->
-
   <!--脱敏配置-->
-  <!--<conversionRule conversionWord="msg" converterClass="com.dcits.galaxy.core.sensitive.SensitiveDataConverter"/>-->
-
   <root level="${logbackLoglevel}">
     <appender-ref ref="ROLLING" />
     <appender-ref ref="STDOUT" />

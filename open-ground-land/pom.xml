@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>open-ground-land</artifactId>
+    <packaging>pom</packaging>
+    <name>Open Ground Land</name>
+    <description>Land 批量调度产品 —— 基于 Open Ground 的分布式批处理调度框架</description>
+
+    <modules>
+        <module>open-ground-land-api</module>
+        <module>open-ground-land-core</module>
+        <module>open-ground-land-dispatch</module>
+    </modules>
+
+    <properties>
+        <commons-net.version>3.9.0</commons-net.version>
+        <jsch.version>0.1.55</jsch.version>
+        <ganymed-ssh2.version>262</ganymed-ssh2.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 子模块 -->
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-job</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-dispatch</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- FTP/SFTP -->
+            <dependency>
+                <groupId>commons-net</groupId>
+                <artifactId>commons-net</artifactId>
+                <version>${commons-net.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jcraft</groupId>
+                <artifactId>jsch</artifactId>
+                <version>${jsch.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.ethz.ganymed</groupId>
+                <artifactId>ganymed-ssh2</artifactId>
+                <version>${ganymed-ssh2.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

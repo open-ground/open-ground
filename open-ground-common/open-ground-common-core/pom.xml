@@ -111,5 +111,10 @@
             <artifactId>open-ground-security-api</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- MyBatis-Plus（包含 mybatis-spring-boot-starter + mybatis-annotation） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
     </dependencies>
 </project>

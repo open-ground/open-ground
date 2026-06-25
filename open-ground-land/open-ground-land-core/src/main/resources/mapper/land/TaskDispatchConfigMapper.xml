@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskDispatchConfigMapper">
+
+    <resultMap id="taskDispatchConfigDomain" type="io.github.openground.land.common.entity.TaskDispatchConfigDomain">
+        <id column="TASK_ID" property="taskId" jdbcType="VARCHAR"/>
+        <result column="COMPANY" property="company" jdbcType="VARCHAR"/>
+        <result column="TASK_NAME" property="taskName" jdbcType="VARCHAR"/>
+        <result column="TASK_ADDRESS" property="taskAddress" jdbcType="VARCHAR"/>
+        <result column="TASK_METHOD" property="taskMethod" jdbcType="VARCHAR"/>
+        <result column="EXE_PERIOD_VALUE" property="exePeriodValue" jdbcType="VARCHAR"/>
+        <result column="EXE_PERIOD_TYPE" property="exePeriodType" jdbcType="VARCHAR"/>
+        <result column="EXE_PERIOD_TYPE_NAME" property="exePeriodTypeName" jdbcType="VARCHAR"/>
+        <result column="FIRST_EXE_TIME" property="firstExeTime" jdbcType="VARCHAR"/>
+        <result column="STATUS" property="status" jdbcType="VARCHAR"/>
+        <result column="EXE_HOST_IP" property="exeHostIp" jdbcType="VARCHAR"/>
+        <result column="NEXT_EXE_TIME" property="nextExeTime" jdbcType="VARCHAR"/>
+        <result column="ADDITION_FLAG" property="additionFlag" jdbcType="VARCHAR"/>
+        <result column="TASK_IS_RUNNING" property="taskIsRunning" jdbcType="VARCHAR"/>
+        <result column="TASK_DETAIL" property="taskDetail" jdbcType="VARCHAR"/>
+        <result column="MT_TIME" property="mtTime" jdbcType="VARCHAR"/>
+        <result column="RE_EXE_TIMES" property="reExeTimes" jdbcType="INTEGER"/>
+        <result column="MAX_RE_EXE_TIMES" property="maxReExeTimes" jdbcType="INTEGER"/>
+        <result column="PARAMS" property="params" jdbcType="VARCHAR"/>
+        <result column="CONDITION_PARAM" property="conditionParam" jdbcType="VARCHAR"/>
+        <result column="MT_USER" property="mtUser" jdbcType="VARCHAR"/>
+        <result column="START_TIME" property="startTime" jdbcType="VARCHAR"/>
+        <result column="END_TIME" property="endTime" jdbcType="VARCHAR"/>
+        <result column="IS_BEFORE" property="isBefore" jdbcType="VARCHAR"/>
+        <result column="BEFORE_TASK" property="beforeTask" jdbcType="VARCHAR"/>
+        <result column="AFTER_TASK" property="afterTask" jdbcType="VARCHAR"/>
+        <result column="BATCH_NO" property="batchNo" jdbcType="INTEGER"/>
+        <result column="UPDATE_TIME" property="updateTime" jdbcType="VARCHAR"/>
+        <result column="FILE_INFO" property="fileInfo" jdbcType="VARCHAR"/>
+        <result column="ID" property="id" jdbcType="VARCHAR"/>
+        <result column="CPS_GROUP" property="cpsGroup" jdbcType="VARCHAR"/>
+        <result column="JOB_ID" property="jobId" jdbcType="VARCHAR"/>
+        <result column="JOB_FLOW" property="jobFlow" jdbcType="VARCHAR"/>
+        <result column="EXTEND1" property="extend1" jdbcType="VARCHAR"/>
+        <result column="EXTEND2" property="extend2" jdbcType="VARCHAR"/>
+        <result column="EXTEND3" property="extend3" jdbcType="VARCHAR"/>
+        <result column="EXTEND4" property="extend4" jdbcType="VARCHAR"/>
+        <result column="EXTEND5" property="extend5" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="taskConfig_Base_Column">
+        COMPANY, TASK_ID, TASK_NAME, BEFORE_TASK, AFTER_TASK, IS_BEFORE,
+        TASK_ADDRESS, TASK_METHOD, EXE_PERIOD_VALUE, EXE_PERIOD_TYPE,
+        FIRST_EXE_TIME, STATUS, EXE_HOST_IP, NEXT_EXE_TIME, START_TIME, END_TIME,
+        ADDITION_FLAG, TASK_IS_RUNNING, TASK_DETAIL, MT_TIME, MT_USER,
+        RE_EXE_TIMES, MAX_RE_EXE_TIMES, PARAMS, BATCH_NO, UPDATE_TIME,
+        FILE_INFO, CONDITION_PARAM, CPS_GROUP, JOB_ID, JOB_FLOW,
+        EXTEND1, EXTEND2, EXTEND3, EXTEND4, EXTEND5
+    </sql>
+
+    <!-- 查询待调度的任务，仅查询任务状态为有效的定时任务 -->
+    <select id="selectTaskByInfo" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG TASK
+        WHERE STATUS = '1' AND IS_BEFORE = 'N'
+            AND TASK.EXE_HOST_IP IN
+        <foreach collection="list" separator="," open="(" close=")" item="item">
+            #{item}
+        </foreach>
+        AND TASK_ID not in (select DISTINCT task_id from TASK_DISPATCH_EXE_LOG where EXE_STATUS = 'E' )
+        <if test="currentTime != null and currentTime != ''">
+            AND task.NEXT_EXE_TIME <![CDATA[<=]]> #{currentTime}
+        </if>
+        <if test="cpsGroup != null and cpsGroup != ''">
+            AND TASK.CPS_GROUP = #{cpsGroup}
+        </if>
+    </select>
+
+    <!-- 查询任务状态为有效的定时任务 -->
+    <select id="selectValidInfo" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG TASK WHERE STATUS = '1' AND ADDITION_FLAG = 'N' AND IS_BEFORE = 'N'
+        <if test="taskId != null and taskId != ''">
+            AND task_id = #{taskId}
+        </if>
+        <if test="cpsGroup != null and cpsGroup != ''">
+            AND CPS_GROUP = #{cpsGroup}
+        </if>
+    </select>
+
+    <select id="selectTaskDispatchConfigByPK" resultMap="taskDispatchConfigDomain">
+        select <include refid="taskConfig_Base_Column"/>
+        from TASK_DISPATCH_CONFIG t
+        where t.TASK_ID = #{taskId}
+    </select>
+
+    <select id="selectTaskDispatchConfigByJobId" resultMap="taskDispatchConfigDomain">
+        select <include refid="taskConfig_Base_Column"/>
+        from TASK_DISPATCH_CONFIG t
+        where t.JOB_ID = #{jobId}
+    </select>
+
+    <update id="updateTaskDispatchConfig">
+        UPDATE TASK_DISPATCH_CONFIG
+        <set>
+            <if test="task.taskName != null">
+                TASK_NAME = #{task.taskName},
+            </if>
+            <if test="task.taskAddress != null">
+                TASK_ADDRESS = #{task.taskAddress},
+            </if>
+            <if test="task.taskMethod != null">
+                TASK_METHOD = #{task.taskMethod},
+            </if>
+            <if test="task.exePeriodValue != null">
+                EXE_PERIOD_VALUE = #{task.exePeriodValue},
+            </if>
+            <if test="task.exePeriodType != null">
+                EXE_PERIOD_TYPE = #{task.exePeriodType},
+            </if>
+            <if test="task.firstExeTime != null">
+                FIRST_EXE_TIME = #{task.firstExeTime},
+            </if>
+            <if test="task.status != null">
+                STATUS = #{task.status},
+            </if>
+            <if test="task.exeHostIp != null">
+                EXE_HOST_IP = #{task.exeHostIp},
+            </if>
+            <if test="task.nextExeTime != null">
+                NEXT_EXE_TIME = #{task.nextExeTime},
+            </if>
+            <if test="task.taskIsRunning != null">
+                TASK_IS_RUNNING = #{task.taskIsRunning},
+            </if>
+            <if test="task.taskDetail != null">
+                TASK_DETAIL = #{task.taskDetail},
+            </if>
+            <if test="task.mtTime != null">
+                MT_TIME = #{task.mtTime},
+            </if>
+            <if test="task.reExeTimes != null">
+                RE_EXE_TIMES = #{task.reExeTimes},
+            </if>
+            <if test="task.maxReExeTimes != null">
+                MAX_RE_EXE_TIMES = #{task.maxReExeTimes},
+            </if>
+            <if test="task.params != null">
+                PARAMS = #{task.params},
+            </if>
+            <if test="task.batchNo != null">
+                BATCH_NO = #{task.batchNo},
+            </if>
+            <if test="task.updateTime != null">
+                UPDATE_TIME = #{task.updateTime},
+            </if>
+            <if test="task.fileInfo != null">
+                FILE_INFO = #{task.fileInfo},
+            </if>
+            <if test="task.conditionParam != null">
+                CONDITION_PARAM = #{task.conditionParam},
+            </if>
+            <if test="task.cpsGroup != null">
+                CPS_GROUP = #{task.cpsGroup},
+            </if>
+            <if test="task.jobId != null">
+                JOB_ID = #{task.jobId},
+            </if>
+            <if test="task.jobFlow != null">
+                JOB_FLOW = #{task.jobFlow},
+            </if>
+            <if test="task.extend1 != null">
+                EXTEND1 = #{task.extend1},
+            </if>
+            <if test="task.extend2 != null">
+                EXTEND2 = #{task.extend2},
+            </if>
+            <if test="task.extend3 != null">
+                EXTEND3 = #{task.extend3},
+            </if>
+            <if test="task.extend4 != null">
+                EXTEND4 = #{task.extend4},
+            </if>
+            <if test="task.extend5 != null">
+                EXTEND5 = #{task.extend5},
+            </if>
+            <if test="task.company != null">
+                COMPANY = #{task.company},
+            </if>
+        </set>
+        WHERE TASK_ID = #{task.taskId}
+    </update>
+
+    <select id="datalistPage" parameterType="io.github.openground.land.common.entity.TaskDispatchConfigDomain" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG t
+        <where>
+            <if test="taskId != null and taskId != ''">
+                t.TASK_ID = #{taskId}
+            </if>
+            <if test="isBefore != null and isBefore != ''">
+                and t.IS_BEFORE = #{isBefore}
+            </if>
+            <if test="taskName != null and taskName != ''">
+                and t.TASK_NAME LIKE '%' ||#{taskName}|| '%'
+            </if>
+            <if test="taskAddress != null and taskAddress != ''">
+                and t.TASK_ADDRESS = #{taskAddress}
+            </if>
+            <if test="status != null and status != ''">
+                and t.STATUS = #{status}
+            </if>
+            <if test="exeHostIp != null and exeHostIp != ''">
+                and t.EXE_HOST_IP = #{exeHostIp}
+            </if>
+            <if test="nextExeTime != null and nextExeTime != ''">
+                and t.NEXT_EXE_TIME = #{nextExeTime}
+            </if>
+            <if test="cpsGroup != null and cpsGroup != ''">
+                and t.CPS_GROUP = #{cpsGroup}
+            </if>
+            <if test="company != null and company != ''">
+                and t.COMPANY = #{company}
+            </if>
+            <if test="jobId != null and jobId != ''">
+                and t.JOB_ID = #{jobId}
+            </if>
+        </where>
+        <if test="queryOrder != null and queryOrder != ''">
+            order by ${queryOrder}
+        </if>
+    </select>
+
+    <!-- 根据ID查找 -->
+    <select id="getTaskInfosById" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG t
+         WHERE t.TASK_ID IN
+        <foreach item="item" index="index" collection="list" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="getAfterTaskInfo" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG t
+        <where>
+            <if test="taskId != null and taskId != ''">
+                t.BEFORE_TASK = #{taskId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 获取未生效的任务 -->
+    <select id="findTaskByStatus0" resultMap="taskDispatchConfigDomain">
+        SELECT <include refid="taskConfig_Base_Column"/> FROM TASK_DISPATCH_CONFIG WHERE STATUS = '0' AND TASK_ID IN
+        <foreach item="item" index="index" collection="tasks" open="(" separator="," close=")">
+            #{item, jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <!-- 查询所有有效的条件执行任务 -->
+    <select id="findConditionTask" resultMap="taskDispatchConfigDomain">
+        SELECT C.ID, CONF.TASK_ID,
+        CONF.TASK_NAME,
+        CONF.BEFORE_TASK,
+        CONF.AFTER_TASK,
+        CONF.IS_BEFORE,
+        CONF.TASK_ADDRESS,
+        CONF.TASK_METHOD,
+        CONF.EXE_PERIOD_VALUE,
+        CONF.EXE_PERIOD_TYPE,
+        CONF.FIRST_EXE_TIME,
+        CONF.STATUS,
+        CONF.EXE_HOST_IP,
+        CONF.NEXT_EXE_TIME,
+        CONF.START_TIME,
+        CONF.END_TIME,
+        CONF.ADDITION_FLAG,
+        CONF.TASK_IS_RUNNING,
+        CONF.TASK_DETAIL,
+        CONF.MT_TIME,
+        CONF.MT_USER,
+        CONF.RE_EXE_TIMES,
+        CONF.MAX_RE_EXE_TIMES,
+        CONF.PARAMS,
+        CONF.BATCH_NO,
+        CONF.UPDATE_TIME,
+        CONF.FILE_INFO,
+        CONF.CONDITION_PARAM,
+        CONF.CPS_GROUP,
+        CONF.COMPANY
+        FROM (
+                SELECT B.TASK_ID, MIN(A.ID) ID FROM TASK_DISPATCH_EXE_LOG A
+                LEFT JOIN
+                    TASK_DISPATCH_CONFIG B ON A.TASK_ID = B.TASK_ID
+                WHERE
+                    B.IS_BEFORE = 'C'
+                    AND B.CPS_GROUP = #{CPS_GROUP}
+                    AND B.STATUS = '1'
+                    AND A.EXE_STATUS = 'W'
+                    <if test="EOD_DATE != null">
+                        AND A.EOD_DATE = #{EOD_DATE}
+                    </if>
+                    <if test="HOST_IP != null">
+                        AND A.EXE_CUR_HOST_IP = #{HOST_IP}
+                    </if>
+                GROUP BY B.TASK_ID
+        ) C
+        LEFT JOIN TASK_DISPATCH_CONFIG CONF ON C.TASK_ID = CONF.TASK_ID
+    </select>
+
+    <!-- 查询未指定主机，或所指定的主机无法提供服务的定时任务 -->
+    <select id="selectTaskByIP" resultMap="taskDispatchConfigDomain">
+        SELECT
+        <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG TASK
+        WHERE STATUS = '1' AND IS_BEFORE = 'N'
+            AND TASK.EXE_HOST_IP IN
+        <foreach collection="list" separator="," open="(" close=")" item="item">
+            #{item}
+        </foreach>
+        <if test="currentTime != null and currentTime != ''">
+            AND task.NEXT_EXE_TIME <![CDATA[<=]]> #{currentTime}
+        </if>
+        <if test="cpsGroup != null and cpsGroup != ''">
+            AND TASK.CPS_GROUP = #{cpsGroup}
+        </if>
+    </select>
+
+    <update id="updateBeforeTask">
+        UPDATE TASK_DISPATCH_CONFIG SET BEFORE_TASK = #{beforeTask} WHERE TASK_ID = #{taskId}
+    </update>
+    <update id="updateAfterTask">
+        UPDATE TASK_DISPATCH_CONFIG SET AFTER_TASK = #{afterTask} WHERE TASK_ID = #{taskId}
+    </update>
+
+    <update id="runSql">
+        ${sql}
+    </update>
+
+    <!-- 调用存储过程 -->
+    <select id="callProcedure" statementType="CALLABLE" parameterType="map">
+        {
+            CALL ${procName} (
+                #{eodDate, mode=IN, jdbcType=VARCHAR},
+                #{retCode, mode=OUT, jdbcType=VARCHAR},
+                #{retMsg, mode=OUT, jdbcType=VARCHAR}
+            )
+        }
+    </select>
+
+    <!-- ==================== 以下为实体 CRUD（根据对象操作） ==================== -->
+
+    <insert id="insert" parameterType="io.github.openground.land.common.entity.TaskDispatchConfigDomain">
+        INSERT INTO TASK_DISPATCH_CONFIG (
+            COMPANY, TASK_ID, TASK_NAME, BEFORE_TASK, AFTER_TASK, IS_BEFORE,
+            TASK_ADDRESS, TASK_METHOD, EXE_PERIOD_VALUE, EXE_PERIOD_TYPE,
+            FIRST_EXE_TIME, STATUS, EXE_HOST_IP, NEXT_EXE_TIME, START_TIME, END_TIME,
+            ADDITION_FLAG, TASK_IS_RUNNING, TASK_DETAIL, MT_TIME, MT_USER,
+            RE_EXE_TIMES, MAX_RE_EXE_TIMES, PARAMS, BATCH_NO, UPDATE_TIME,
+            FILE_INFO, CONDITION_PARAM, CPS_GROUP, JOB_ID, JOB_FLOW,
+            EXTEND1, EXTEND2, EXTEND3, EXTEND4, EXTEND5
+        ) VALUES (
+            #{company}, #{taskId}, #{taskName}, #{beforeTask}, #{afterTask}, #{isBefore},
+            #{taskAddress}, #{taskMethod}, #{exePeriodValue}, #{exePeriodType},
+            #{firstExeTime}, #{status}, #{exeHostIp}, #{nextExeTime}, #{startTime}, #{endTime},
+            #{additionFlag}, #{taskIsRunning}, #{taskDetail}, #{mtTime}, #{mtUser},
+            #{reExeTimes}, #{maxReExeTimes}, #{params}, #{batchNo}, #{updateTime},
+            #{fileInfo}, #{conditionParam}, #{cpsGroup}, #{jobId}, #{jobFlow},
+            #{extend1}, #{extend2}, #{extend3}, #{extend4}, #{extend5}
+        )
+    </insert>
+
+    <!-- 实体更新（直接传入实体对象）-->
+    <update id="update" parameterType="io.github.openground.land.common.entity.TaskDispatchConfigDomain">
+        UPDATE TASK_DISPATCH_CONFIG
+        <set>
+            <if test="taskName != null">TASK_NAME = #{taskName},</if>
+            <if test="taskAddress != null">TASK_ADDRESS = #{taskAddress},</if>
+            <if test="taskMethod != null">TASK_METHOD = #{taskMethod},</if>
+            <if test="exePeriodValue != null">EXE_PERIOD_VALUE = #{exePeriodValue},</if>
+            <if test="exePeriodType != null">EXE_PERIOD_TYPE = #{exePeriodType},</if>
+            <if test="firstExeTime != null">FIRST_EXE_TIME = #{firstExeTime},</if>
+            <if test="status != null">STATUS = #{status},</if>
+            <if test="exeHostIp != null">EXE_HOST_IP = #{exeHostIp},</if>
+            <if test="nextExeTime != null">NEXT_EXE_TIME = #{nextExeTime},</if>
+            <if test="startTime != null">START_TIME = #{startTime},</if>
+            <if test="endTime != null">END_TIME = #{endTime},</if>
+            <if test="additionFlag != null">ADDITION_FLAG = #{additionFlag},</if>
+            <if test="taskIsRunning != null">TASK_IS_RUNNING = #{taskIsRunning},</if>
+            <if test="taskDetail != null">TASK_DETAIL = #{taskDetail},</if>
+            <if test="mtTime != null">MT_TIME = #{mtTime},</if>
+            <if test="mtUser != null">MT_USER = #{mtUser},</if>
+            <if test="reExeTimes != null">RE_EXE_TIMES = #{reExeTimes},</if>
+            <if test="maxReExeTimes != null">MAX_RE_EXE_TIMES = #{maxReExeTimes},</if>
+            <if test="params != null">PARAMS = #{params},</if>
+            <if test="conditionParam != null">CONDITION_PARAM = #{conditionParam},</if>
+            <if test="batchNo != null">BATCH_NO = #{batchNo},</if>
+            <if test="updateTime != null">UPDATE_TIME = #{updateTime},</if>
+            <if test="fileInfo != null">FILE_INFO = #{fileInfo},</if>
+            <if test="cpsGroup != null">CPS_GROUP = #{cpsGroup},</if>
+            <if test="jobId != null">JOB_ID = #{jobId},</if>
+            <if test="jobFlow != null">JOB_FLOW = #{jobFlow},</if>
+            <if test="extend1 != null">EXTEND1 = #{extend1},</if>
+            <if test="extend2 != null">EXTEND2 = #{extend2},</if>
+            <if test="extend3 != null">EXTEND3 = #{extend3},</if>
+            <if test="extend4 != null">EXTEND4 = #{extend4},</if>
+            <if test="extend5 != null">EXTEND5 = #{extend5},</if>
+            <if test="company != null">COMPANY = #{company},</if>
+        </set>
+        WHERE TASK_ID = #{taskId}
+    </update>
+
+    <delete id="delete" parameterType="io.github.openground.land.common.entity.TaskDispatchConfigDomain">
+        DELETE FROM TASK_DISPATCH_CONFIG WHERE TASK_ID = #{taskId}
+    </delete>
+
+    <select id="selectOne" parameterType="io.github.openground.land.common.entity.TaskDispatchConfigDomain"
+            resultMap="taskDispatchConfigDomain">
+        SELECT <include refid="taskConfig_Base_Column"/>
+        FROM TASK_DISPATCH_CONFIG
+        WHERE TASK_ID = #{taskId}
+    </select>
+
+</mapper>

@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
  * <p>通过 Feign 远程调用 Auth 服务保存操作日志。</p>
  * <p>分离部署时，业务模块引入 ground-auth-springcloud 自动装配此实现。</p>
  *
- * @author zhaossb
+ * @author 
  * @version 1.0
  */
 @Slf4j

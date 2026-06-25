@@ -190,3 +190,4 @@ Icon
 # Allow .lingma directory
 !.lingma/
 !.lingma/**
+land-develop

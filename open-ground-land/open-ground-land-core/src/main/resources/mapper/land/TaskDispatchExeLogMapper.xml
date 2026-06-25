@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.mapper.TaskDispatchExeLogMapper">
+
+    <resultMap id="taskDispatchExeLogDomain" type="io.github.openground.land.common.entity.TaskDispatchExeLogDomain">
+        <id column="ID" property="id" jdbcType="VARCHAR"/>
+        <result column="COMPANY" property="company" jdbcType="VARCHAR"/>
+        <result column="TASK_ID" property="taskId" jdbcType="VARCHAR"/>
+        <result column="PLAN_START_TIME" property="planStartTime" jdbcType="VARCHAR"/>
+        <result column="EXE_START_TIME" property="exeStartTime" jdbcType="VARCHAR"/>
+        <result column="EXE_END_TIME" property="exeEndTime" jdbcType="VARCHAR"/>
+        <result column="EXE_STATUS" property="exeStatus" jdbcType="VARCHAR"/>
+        <result column="ERR_INFO" property="errInfo" jdbcType="VARCHAR"/>
+        <result column="EXE_CUR_HOST_IP" property="exeCurHostIp" jdbcType="VARCHAR"/>
+        <result column="MT_TIME" property="mtTime" jdbcType="VARCHAR"/>
+        <result column="BATCH_NO" property="batchNo" jdbcType="VARCHAR"/>
+        <result column="FILE_NAME" property="fileName" jdbcType="VARCHAR"/>
+        <result column="EOD_DATE" property="eodDate" jdbcType="VARCHAR"/>
+        <result column="JOB_ID" property="jobId" jdbcType="VARCHAR"/>
+        <result column="EXTEND1" property="extend1" jdbcType="VARCHAR"/>
+        <result column="EXTEND2" property="extend2" jdbcType="VARCHAR"/>
+        <result column="EXTEND3" property="extend3" jdbcType="VARCHAR"/>
+        <result column="EXTEND4" property="extend4" jdbcType="VARCHAR"/>
+        <result column="EXTEND5" property="extend5" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="taskDispatchExeLogExtResultMap" type="io.github.openground.land.common.entity.TaskDispatchExeLogExt" extends="taskDispatchExeLogDomain">
+        <result column="BEFORE_TASK" property="beforeTask" jdbcType="VARCHAR"/>
+        <result column="AFTER_TASK" property="afterTask" jdbcType="VARCHAR"/>
+        <result column="TASK_NAME" property="taskName" jdbcType="VARCHAR"/>
+        <result column="JOB_FLOW" property="jobFlow" jdbcType="VARCHAR"/>
+        <result column="TASK_METHOD" property="taskMethod" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="taskExeLog_Base_Column">
+        ID, COMPANY, TASK_ID, PLAN_START_TIME, EXE_START_TIME, EXE_END_TIME,
+        EXE_STATUS, ERR_INFO, EXE_CUR_HOST_IP, MT_TIME, BATCH_NO, FILE_NAME,
+        EOD_DATE, JOB_ID, EXTEND1, EXTEND2, EXTEND3, EXTEND4, EXTEND5
+    </sql>
+
+    <sql id="taskExeLog_Base_value">
+        #{id,jdbcType=VARCHAR},
+        #{company,jdbcType=VARCHAR},
+        #{taskId,jdbcType=VARCHAR},
+        #{planStartTime,jdbcType=VARCHAR},
+        #{exeStartTime,jdbcType=VARCHAR},
+        #{exeEndTime,jdbcType=VARCHAR},
+        #{exeStatus,jdbcType=VARCHAR},
+        #{errInfo,jdbcType=VARCHAR},
+        #{exeCurHostIp,jdbcType=VARCHAR},
+        #{mtTime,jdbcType=VARCHAR},
+        #{batchNo,jdbcType=VARCHAR},
+        #{fileName,jdbcType=VARCHAR},
+        #{eodDate,jdbcType=VARCHAR},
+        #{jobId,jdbcType=VARCHAR},
+        #{extend1,jdbcType=VARCHAR},
+        #{extend2,jdbcType=VARCHAR},
+        #{extend3,jdbcType=VARCHAR},
+        #{extend4,jdbcType=VARCHAR},
+        #{extend5,jdbcType=VARCHAR}
+    </sql>
+
+    <!-- 在日志表中取出待执行的任务 -->
+    <select id="selectWaitDispatchTaskByHostIp" resultMap="taskDispatchExeLogDomain">
+        SELECT MIN(LOG.ID) AS ID,
+            MIN(LOG.PLAN_START_TIME) AS PLAN_START_TIME,
+            LOG.TASK_ID,
+            LOG.EXE_STATUS,
+            LOG.FILE_NAME,
+            LOG.EXTEND1
+        FROM TASK_DISPATCH_EXE_LOG LOG
+                LEFT JOIN TASK_DISPATCH_CONFIG TASK ON LOG.TASK_ID = TASK.TASK_ID
+           WHERE     LOG.EXE_CUR_HOST_IP =  #{exeCurHostIp}
+                 AND TASK.STATUS = '1'
+                 AND (LOG.EXE_STATUS = 'P'  OR LOG.EXE_STATUS = 'R')
+                 AND TASK.CPS_GROUP = #{cpsGroup}
+                 AND LOG.TASK_ID NOT IN
+                        (SELECT DISTINCT TASK_ID FROM TASK_DISPATCH_EXE_LOG WHERE EXE_STATUS = 'E')
+        GROUP BY LOG.TASK_ID,LOG.EXE_STATUS,LOG.FILE_NAME,LOG.EXTEND1 ORDER BY ID
+    </select>
+
+    <insert id="insertTaskDispatchExeLog" parameterType="io.github.openground.land.common.entity.TaskDispatchExeLogDomain">
+        insert into TASK_DISPATCH_EXE_LOG
+        (
+            <include refid="taskExeLog_Base_Column"/>
+        )
+        values
+        (
+            <include refid="taskExeLog_Base_value"/>
+        )
+    </insert>
+
+    <update id="updateTaskDispatchExeLog">
+        UPDATE TASK_DISPATCH_EXE_LOG
+        <set>
+            <if test="log.taskId != null">
+                TASK_ID = #{log.taskId},
+            </if>
+            <if test="log.company != null">
+                COMPANY = #{log.company},
+            </if>
+            <if test="log.planStartTime != null">
+                PLAN_START_TIME = #{log.planStartTime},
+            </if>
+            <if test="log.exeStartTime != null">
+                EXE_START_TIME = #{log.exeStartTime},
+            </if>
+            <if test="log.exeEndTime != null">
+                EXE_END_TIME = #{log.exeEndTime},
+            </if>
+            <if test="log.exeStatus != null">
+                EXE_STATUS = #{log.exeStatus},
+            </if>
+            <if test="log.errInfo != null">
+                ERR_INFO = #{log.errInfo,jdbcType=CLOB},
+            </if>
+            <if test="log.exeCurHostIp != null">
+                EXE_CUR_HOST_IP = #{log.exeCurHostIp},
+            </if>
+            <if test="log.mtTime != null">
+                MT_TIME = #{log.mtTime},
+            </if>
+            <if test="log.fileName != null">
+                FILE_NAME = #{log.fileName},
+            </if>
+            <if test="log.eodDate != null">
+                EOD_DATE = #{log.eodDate},
+            </if>
+            <if test="log.jobId != null">
+                JOB_ID = #{log.jobId},
+            </if>
+            <if test="log.extend1 != null">
+                EXTEND1 = #{log.extend1},
+            </if>
+            <if test="log.extend2 != null">
+                EXTEND2 = #{log.extend2},
+            </if>
+            <if test="log.extend3 != null">
+                EXTEND3 = #{log.extend3},
+            </if>
+            <if test="log.extend4 != null">
+                EXTEND4 = #{log.extend4},
+            </if>
+            <if test="log.extend5 != null">
+                EXTEND5 = #{log.extend5},
+            </if>
+            <if test="log.company != null">
+                COMPANY = #{log.company},
+            </if>
+        </set>
+        WHERE ID = #{log.id}
+        <if test="exeEndTime != null">
+            AND EXE_END_TIME = #{exeEndTime}
+        </if>
+    </update>
+
+    <!-- 根据批次号和任务id获取执行日志信息 -->
+    <select id="findExeLog4checkBefore" resultMap="taskDispatchExeLogDomain">
+        SELECT <include refid="taskExeLog_Base_Column"/> FROM TASK_DISPATCH_EXE_LOG
+        WHERE 1 = 1
+        AND TASK_ID IN
+        <foreach item="item" index="index" collection="tasks" open="(" separator="," close=")">
+            #{item, jdbcType=VARCHAR}
+        </foreach>
+        AND EXE_STATUS IN
+        <foreach item="item" index="index" collection="status" open="(" separator="," close=")">
+            #{item, jdbcType=VARCHAR}
+        </foreach>
+        AND BATCH_NO = #{BATCH_NO}
+        AND JOB_ID = #{JOB_ID}
+        AND EOD_DATE = #{EOD_DATE}
+    </select>
+
+    <!-- 根据批次号和任务id获取可忽略的执行日志信息 -->
+    <select id="findExeLog4checkBeforeIgnore" resultMap="taskDispatchExeLogDomain">
+        SELECT <include refid="taskExeLog_Base_Column"/>
+            FROM TASK_DISPATCH_EXE_LOG A
+        WHERE 1 = 1
+        AND A.TASK_ID IN
+        <foreach item="item" index="index" collection="tasks" open="(" separator="," close=")">
+            #{item, jdbcType=VARCHAR}
+        </foreach>
+        AND A.EXTEND2 = 'Y'
+        AND A.EOD_DATE = #{EOD_DATE}
+        AND A.BATCH_NO = #{BATCH_NO}
+        AND A.JOB_ID = #{JOB_ID}
+    </select>
+
+    <!-- 根据批次号和任务id获取执行日志信息（用于执行后置任务） -->
+    <select id="findExeLog4ExeAfter" resultMap="taskDispatchExeLogDomain">
+        SELECT <include refid="taskExeLog_Base_Column"/> FROM TASK_DISPATCH_EXE_LOG
+        WHERE JOB_ID = #{JOB_ID}
+        AND TASK_ID = #{TASK_ID}
+        AND EOD_DATE = #{EOD_DATE}
+        AND BATCH_NO = #{BATCH_NO}
+        AND EXE_STATUS = 'W'
+    </select>
+
+    <!-- 根据id获取执行日志信息 -->
+    <select id="findExeLogById" resultMap="taskDispatchExeLogDomain">
+        SELECT <include refid="taskExeLog_Base_Column"/> FROM TASK_DISPATCH_EXE_LOG
+        WHERE ID = #{ID}
+    </select>
+
+    <!-- 查询未执行的执行计划 -->
+    <select id="findNotExeTaskPlan" resultType="java.util.Map">
+        SELECT <include refid="taskExeLog_Base_Column"/> FROM TASK_DISPATCH_EXE_LOG WHERE JOB_ID = #{JOB_ID} AND EXE_STATUS = 'W' and EXTEND2 != 'Y'
+        <if test="ID != null">
+            AND ID != #{ID}
+        </if>
+    </select>
+
+    <delete id="deleteTaskPlanByPrimaryKey" parameterType="java.lang.String">
+        DELETE FROM TASK_DISPATCH_EXE_LOG WHERE ID = #{ID}
+    </delete>
+
+    <!-- 查询执行日志列表（含任务信息 JOIN） -->
+    <select id="selectExeLogList" resultMap="taskDispatchExeLogExtResultMap">
+        SELECT
+            LOG.ID,
+            LOG.JOB_ID,
+            LOG.EOD_DATE,
+            LOG.TASK_ID,
+            LOG.PLAN_START_TIME,
+            LOG.EXE_START_TIME,
+            LOG.EXE_END_TIME,
+            LOG.EXE_STATUS,
+            LOG.ERR_INFO,
+            LOG.EXE_CUR_HOST_IP,
+            LOG.MT_TIME,
+            LOG.BATCH_NO,
+            LOG.FILE_NAME,
+            LOG.EXTEND1,
+            LOG.EXTEND2,
+            LOG.EXTEND3,
+            LOG.EXTEND4,
+            LOG.EXTEND5,
+            TASK.BEFORE_TASK,
+            TASK.AFTER_TASK,
+            TASK.TASK_NAME,
+            LOG.COMPANY,
+            TASK.JOB_ID,
+            TASK.JOB_FLOW,
+            TASK.TASK_METHOD
+        FROM
+            TASK_DISPATCH_EXE_LOG LOG,
+            TASK_DISPATCH_CONFIG TASK
+        WHERE
+            LOG.TASK_ID = TASK.TASK_ID
+        <if test="eodDate != null and eodDate != ''">
+            AND LOG.EOD_DATE = #{eodDate}
+        </if>
+        <if test="jobId != null and jobId != ''">
+            AND LOG.JOB_ID = #{jobId}
+        </if>
+        <if test="batchNo != null and batchNo != ''">
+            AND LOG.BATCH_NO = #{batchNo}
+        </if>
+        <if test="taskId != null and taskId != ''">
+            AND LOG.TASK_ID = #{taskId}
+        </if>
+        <if test="exeStatus != null and exeStatus != ''">
+            AND LOG.EXE_STATUS = #{exeStatus}
+        </if>
+        <if test="company != null and company != ''">
+            AND LOG.COMPANY = #{company}
+        </if>
+        <if test="id != null and id != ''">
+            AND LOG.ID = #{id}
+        </if>
+        ORDER BY LOG.ID DESC
+    </select>
+
+    <!-- 查询作业执行日志列表 -->
+    <select id="selectJobExeLogList" resultMap="taskDispatchExeLogExtResultMap">
+        SELECT
+            LOG.ID,
+            LOG.JOB_ID,
+            LOG.EOD_DATE,
+            LOG.TASK_ID,
+            LOG.PLAN_START_TIME,
+            LOG.EXE_START_TIME,
+            LOG.EXE_END_TIME,
+            LOG.EXE_STATUS,
+            LOG.ERR_INFO,
+            LOG.EXE_CUR_HOST_IP,
+            LOG.MT_TIME,
+            LOG.BATCH_NO,
+            LOG.FILE_NAME,
+            LOG.EXTEND1,
+            LOG.EXTEND2,
+            LOG.EXTEND3,
+            LOG.EXTEND4,
+            LOG.EXTEND5,
+            TASK.BEFORE_TASK,
+            TASK.AFTER_TASK,
+            TASK.TASK_NAME,
+            LOG.COMPANY,
+            TASK.JOB_ID,
+            TASK.JOB_FLOW,
+            TASK.TASK_METHOD
+        FROM
+            TASK_DISPATCH_EXE_LOG LOG,
+            TASK_DISPATCH_CONFIG TASK
+        WHERE
+            LOG.TASK_ID = TASK.TASK_ID
+        <if test="eodDate != null and eodDate != ''">
+            AND LOG.EOD_DATE = #{eodDate}
+        </if>
+        <if test="jobId != null and jobId != ''">
+            AND LOG.JOB_ID = #{jobId}
+        </if>
+        <if test="batchNo != null and batchNo != ''">
+            AND LOG.BATCH_NO = #{batchNo}
+        </if>
+        <if test="taskId != null and taskId != ''">
+            AND LOG.TASK_ID = #{taskId}
+        </if>
+        <if test="exeStatus != null and exeStatus != ''">
+            AND LOG.EXE_STATUS = #{exeStatus}
+        </if>
+        <if test="company != null and company != ''">
+            AND LOG.COMPANY = #{company}
+        </if>
+        <if test="id != null and id != ''">
+            AND LOG.ID = #{id}
+        </if>
+        ORDER BY LOG.ID ASC
+    </select>
+
+    <!-- 查询批次号列表 -->
+    <select id="selectBatchNoByJobId" resultMap="taskDispatchExeLogDomain">
+        SELECT DISTINCT LOG.BATCH_NO FROM TASK_DISPATCH_EXE_LOG LOG WHERE LOG.JOB_ID = #{jobId} AND LOG.EOD_DATE = #{eodDate} AND LOG.COMPANY = #{company}
+    </select>
+
+    <!-- 更新执行计划状态（批量） -->
+    <update id="updateStatus">
+        UPDATE TASK_DISPATCH_EXE_LOG
+        <set>
+            <if test="exeStatus != null and exeStatus != ''">
+                EXE_STATUS = #{exeStatus},
+            </if>
+            <if test="errInfo != null and errInfo != ''">
+                ERR_INFO = #{errInfo},
+            </if>
+        </set>
+        <where>
+            <trim prefix="(" suffix=")" suffixOverrides="AND">
+                <if test="company != null and company != ''">
+                    COMPANY = #{company}
+                    AND
+                </if>
+                <if test="jobId != null and jobId != ''">
+                    JOB_ID = #{jobId}
+                    AND
+                </if>
+                <if test="eodDate != null and eodDate != ''">
+                    EOD_DATE = #{eodDate}
+                    AND
+                </if>
+                <if test="taskId != null and taskId != ''">
+                    TASK_ID = #{taskId}
+                    AND
+                </if>
+                <if test="batchNo != null and batchNo != ''">
+                    BATCH_NO = #{batchNo}
+                    AND
+                </if>
+            </trim>
+        </where>
+    </update>
+
+    <!-- 更新执行计划状态（仅待执行） -->
+    <update id="updateStatusW">
+        UPDATE TASK_DISPATCH_EXE_LOG
+        <set>
+            <if test="exeStatus != null and exeStatus != ''">
+                EXE_STATUS = #{exeStatus},
+            </if>
+            <if test="errInfo != null and errInfo != ''">
+                ERR_INFO = #{errInfo},
+            </if>
+        </set>
+        where EXE_STATUS = 'W'
+        <if test="company != null and company != ''">
+            AND COMPANY = #{company}
+        </if>
+        <if test="jobId != null and jobId != ''">
+            AND JOB_ID = #{jobId}
+        </if>
+        <if test="eodDate != null and eodDate != ''">
+            AND EOD_DATE = #{eodDate}
+        </if>
+        <if test="taskId != null and taskId != ''">
+            AND TASK_ID = #{taskId}
+        </if>
+    </update>
+
+    <!-- 获取批次号（取最大批次号+1） -->
+    <select id="getBatchNo" resultType="io.github.openground.land.common.entity.TaskDispatchExeLogDomain">
+        SELECT COALESCE(MAX(CAST(BATCH_NO AS UNSIGNED)),'0') BATCH_NO FROM TASK_DISPATCH_EXE_LOG WHERE JOB_ID = #{jobId} AND EOD_DATE = #{eodDate} AND COMPANY = #{company}
+    </select>
+
+    <!-- 调用存储过程 -->
+    <select id="callProcedure" statementType="CALLABLE" parameterType="map">
+        {
+            CALL ${procName} (
+                #{eodDate, mode=IN, jdbcType=VARCHAR},
+                #{retCode, mode=OUT, jdbcType=VARCHAR},
+                #{retMsg, mode=OUT, jdbcType=VARCHAR}
+            )
+        }
+    </select>
+</mapper>

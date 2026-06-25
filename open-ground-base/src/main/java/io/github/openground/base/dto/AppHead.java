@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
  * <p>Title: SysHead</p>
  * <p>Description:  流程请求系统头信息</p>
  *
- * @author zhao.xiaobo
+ * @author jack.zhang
  * @version 3.0.0
  * @date 2019 -11-13 16:37
  */

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.open-ground</groupId>
+        <artifactId>open-ground-land</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>open-ground-land-dispatch</artifactId>
+    <packaging>jar</packaging>
+    <name>Open Ground Land Dispatch</name>
+    <description>调度中心模块 — Controller + RemoteTaskExecutor + DbServiceDiscovery</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-land-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

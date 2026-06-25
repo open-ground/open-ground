@@ -9,11 +9,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * @Author: wangyfbe
- * @Description:
- * @Date: 2019/4/17 9:24
+ * @author jack.zhang
+ * @date 2023/7/19
  */
-
 @SuppressWarnings("all")
 public class IdUtil {
   public static final Pattern APP_ID_CHECK = Pattern.compile("[\\u4e00-\\u9fa5]");
