@@ -41,7 +41,7 @@ public class SchemaSyncService {
      * @return 同步结果
      */
     public SyncResult syncSchema(DbSchemaComparator.SchemaDiff diff, String dbType,
-                                 Map<String, String> tableComments) {
+                                  Map<String, String> tableComments) {
         SyncResult result = new SyncResult();
 
         if (diff.isEmpty()) {
@@ -81,6 +81,9 @@ public class SchemaSyncService {
             List<String> alterSqls = generateAlterTableSql(tableName, columnDiff, dbType, comment);
             sqls.addAll(alterSqls);
         }
+
+        sqls.addAll(generatePrimaryKeySyncSqls(diff, dbType));
+        sqls.addAll(generateIndexSyncSqls(diff, dbType));
 
         return sqls;
     }
@@ -247,7 +250,7 @@ public class SchemaSyncService {
     /**
      * 生成 CREATE TABLE SQL
      */
-    private String generateCreateTableSql(SimpleSqlParser.TableDefinition table, String dbType,
+    public String generateCreateTableSql(SimpleSqlParser.TableDefinition table, String dbType,
                                            String comment) {
         StringBuilder sql = new StringBuilder();
 
@@ -284,12 +287,49 @@ public class SchemaSyncService {
                 sql.append(" ").append(column.getAttributes());
             }
             
-            if (i < columns.size() - 1) {
-                sql.append(",");
+            sql.append(",\n");
+        }
+
+        // 主键约束
+        List<String> pkCols = table.getPrimaryKeyColumns();
+        if (pkCols != null && !pkCols.isEmpty()) {
+            sql.append("  PRIMARY KEY (");
+            for (int i = 0; i < pkCols.size(); i++) {
+                if (i > 0) sql.append(", ");
+                sql.append(DbCheckUtils.quoteId(pkCols.get(i), dbType));
             }
+            sql.append("),\n");
+        }
+
+        // 索引
+        List<SimpleSqlParser.ScriptIndexInfo> indexList = table.getIndexList();
+        if (indexList != null) {
+            for (SimpleSqlParser.ScriptIndexInfo idx : indexList) {
+                sql.append("  ");
+                if (idx.isUnique()) {
+                    sql.append("UNIQUE ");
+                }
+                sql.append("INDEX ");
+                if (idx.getIndexName() != null && !idx.getIndexName().isEmpty()) {
+                    sql.append(DbCheckUtils.quoteId(idx.getIndexName(), dbType)).append(" ");
+                }
+                sql.append("(");
+                List<String> idxCols = idx.getColumnNames();
+                for (int i = 0; i < idxCols.size(); i++) {
+                    if (i > 0) sql.append(", ");
+                    sql.append(DbCheckUtils.quoteId(idxCols.get(i), dbType));
+                }
+                sql.append("),\n");
+            }
+        }
+
+        // 去掉末尾的逗号和换行
+        int len = sql.length();
+        if (len >= 2 && sql.substring(len - 2).equals(",\n")) {
+            sql.setLength(len - 2);
             sql.append("\n");
         }
-        
+
         sql.append(")");
 
         // 拼接表选项（如 ENGINE=InnoDB COMMENT='用户表'）
@@ -658,7 +698,98 @@ public class SchemaSyncService {
             }
         }
 
+        sqls.addAll(generatePrimaryKeySyncSqls(diff, dbType));
+        sqls.addAll(generateIndexSyncSqls(diff, dbType));
+
         return sqls;
+    }
+
+    private List<String> generatePrimaryKeySyncSqls(DbSchemaComparator.SchemaDiff diff, String dbType) {
+        List<String> sqls = new ArrayList<>();
+        for (Map.Entry<String, DbSchemaComparator.PkDiff> entry : diff.getPkDiffs().entrySet()) {
+            String tableName = entry.getKey();
+            DbSchemaComparator.PkDiff pkDiff = entry.getValue();
+            String quotedTable = DbCheckUtils.quoteId(tableName, dbType);
+
+            if (pkDiff.getDbPk() != null && !pkDiff.getDbPk().isEmpty()) {
+                sqls.add(generateDropPrimaryKeySql(quotedTable, pkDiff, dbType));
+            }
+
+            if (pkDiff.getScriptPk() != null && !pkDiff.getScriptPk().isEmpty()) {
+                sqls.add("ALTER TABLE " + quotedTable + " ADD PRIMARY KEY ("
+                        + quoteColumnList(pkDiff.getScriptPk(), dbType) + ")");
+            }
+        }
+        return sqls;
+    }
+
+    private String generateDropPrimaryKeySql(String quotedTable, DbSchemaComparator.PkDiff pkDiff, String dbType) {
+        if (DbCheckUtils.isPostgresql(dbType)) {
+            String constraintName = pkDiff.getDbPkName();
+            if (constraintName == null || constraintName.trim().isEmpty()) {
+                constraintName = quotedTable.replace("\"", "") + "_pkey";
+            }
+            return "ALTER TABLE " + quotedTable + " DROP CONSTRAINT "
+                    + DbCheckUtils.quoteId(constraintName, dbType);
+        }
+        return "ALTER TABLE " + quotedTable + " DROP PRIMARY KEY";
+    }
+
+    private List<String> generateIndexSyncSqls(DbSchemaComparator.SchemaDiff diff, String dbType) {
+        List<String> sqls = new ArrayList<>();
+        for (Map.Entry<String, List<DbSchemaComparator.IndexDiff>> entry : diff.getIndexDiffs().entrySet()) {
+            String tableName = entry.getKey();
+            for (DbSchemaComparator.IndexDiff indexDiff : entry.getValue()) {
+                if (indexDiff.getDbIndexName() != null && !indexDiff.getDbIndexName().trim().isEmpty()) {
+                    sqls.add(generateDropIndexSql(tableName, indexDiff.getDbIndexName(), dbType));
+                }
+                if (indexDiff.getScriptColumns() != null && !indexDiff.getScriptColumns().isEmpty()) {
+                    sqls.add(generateCreateIndexSql(tableName, indexDiff, dbType));
+                }
+            }
+        }
+        return sqls;
+    }
+
+    private String generateDropIndexSql(String tableName, String indexName, String dbType) {
+        if (DbCheckUtils.isMysql(dbType)) {
+            return "ALTER TABLE " + DbCheckUtils.quoteId(tableName, dbType)
+                    + " DROP INDEX " + DbCheckUtils.quoteId(indexName, dbType);
+        }
+        return "DROP INDEX " + DbCheckUtils.quoteId(indexName, dbType);
+    }
+
+    private String generateCreateIndexSql(String tableName, DbSchemaComparator.IndexDiff indexDiff, String dbType) {
+        String indexName = indexDiff.getScriptIndexName();
+        if (indexName == null || indexName.trim().isEmpty()) {
+            indexName = buildIndexName(tableName, indexDiff.getScriptColumns());
+        }
+        StringBuilder sql = new StringBuilder();
+        sql.append(indexDiff.isScriptUnique() ? "CREATE UNIQUE INDEX " : "CREATE INDEX ");
+        sql.append(DbCheckUtils.quoteId(indexName, dbType));
+        sql.append(" ON ").append(DbCheckUtils.quoteId(tableName, dbType)).append(" (");
+        sql.append(quoteColumnList(indexDiff.getScriptColumns(), dbType));
+        sql.append(")");
+        return sql.toString();
+    }
+
+    private String quoteColumnList(List<String> columns, String dbType) {
+        StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < columns.size(); i++) {
+            if (i > 0) {
+                sql.append(", ");
+            }
+            sql.append(DbCheckUtils.quoteId(columns.get(i), dbType));
+        }
+        return sql.toString();
+    }
+
+    private String buildIndexName(String tableName, List<String> columns) {
+        StringBuilder name = new StringBuilder("idx_").append(tableName);
+        for (String column : columns) {
+            name.append("_").append(column);
+        }
+        return name.toString();
     }
 
     // ========== 内部实体类 ==========

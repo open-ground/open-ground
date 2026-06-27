@@ -4,20 +4,24 @@ import com.github.pagehelper.PageInfo;
 import io.github.openground.base.constant.ErrorCode;
 import io.github.openground.base.dto.CommonResult;
 import io.github.openground.base.dto.PaginatedResult;
-import io.github.openground.common.dbcheck.model.ScriptInfo;
-import io.github.openground.common.dbcheck.service.AsyncCheckService;
+import io.github.openground.common.dbcheck.extractor.SqlScriptScanner;
 import io.github.openground.common.dbcheck.model.CheckProgress;
-import io.github.openground.common.dbcheck.spi.DbCheckDatasourceProvider;
 import io.github.openground.common.dbcheck.model.DbCheckLogDO;
-import io.github.openground.common.dbcheck.service.DbCheckLogService;
 import io.github.openground.common.dbcheck.model.DbCheckProperties;
 import io.github.openground.common.dbcheck.model.DbCheckResult;
+import io.github.openground.common.dbcheck.model.ScriptInfo;
+import io.github.openground.common.dbcheck.service.AsyncCheckService;
+import io.github.openground.common.dbcheck.service.DbCheckLogService;
 import io.github.openground.common.dbcheck.service.DbCheckService;
+import io.github.openground.common.dbcheck.spi.DbCheckDatasourceProvider;
 import io.github.openground.common.security.SecurityContextHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -658,6 +664,35 @@ public class DbCheckController {
     }
 
     /**
+     * 下载脚本文件
+     *
+     * <p>只允许下载当前脚本扫描结果中存在的文件，避免直接使用前端路径访问文件系统。
+     *
+     * @param scriptKey 脚本唯一标识
+     * @return 脚本文件流
+     */
+    @Operation(summary = "下载脚本文件")
+    @GetMapping("/scripts/download")
+    public ResponseEntity<?> downloadScript(@RequestParam("scriptKey") String scriptKey) {
+        SqlScriptScanner.SqlScript script = dbCheckService.getScriptByKey(scriptKey);
+        if (script == null || script.getResource() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = script.getResource();
+        String fileName = buildDownloadFileName(script);
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(script.getFileSize())
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename*=UTF-8''" + encodedFileName)
+                .body(resource);
+    }
+
+    /**
      * 启动异步数据库检查
      *
      * <p>支持内置数据源（datasourceId=0/null）和外部数据源（datasourceId>0）。
@@ -798,6 +833,21 @@ public class DbCheckController {
             log.warn("获取当前用户失败，使用 system 兜底");
         }
         return "system";
+    }
+	private String buildDownloadFileName(SqlScriptScanner.SqlScript script) {
+        String modulePath = script.getModulePath();
+        String fileName = script.getFileName();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            fileName = "script.sql";
+        }
+        String downloadName = fileName;
+        if (modulePath != null && !modulePath.trim().isEmpty()) {
+            downloadName = modulePath + "_" + fileName;
+        }
+        return downloadName.replace("/", "_")
+                .replace("\\", "_")
+                .replace("\r", "")
+                .replace("\n", "");
     }
 
     /**

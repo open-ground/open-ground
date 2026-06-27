@@ -155,6 +155,7 @@ public class DbSchemaComparator {
             PkDiff d = new PkDiff();
             d.setScriptPk(new ArrayList<>());
             d.setDbPk(new ArrayList<>(dbPk));
+            d.setDbPkName(dbTable.getPrimaryKeyName());
             return d;
         }
         if (dbPk == null || dbPk.isEmpty()) {
@@ -168,6 +169,7 @@ public class DbSchemaComparator {
             PkDiff d = new PkDiff();
             d.setScriptPk(new ArrayList<>(scriptPk));
             d.setDbPk(new ArrayList<>(dbPk));
+            d.setDbPkName(dbTable.getPrimaryKeyName());
             return d;
         }
         for (int i = 0; i < scriptPk.size(); i++) {
@@ -175,6 +177,7 @@ public class DbSchemaComparator {
                 PkDiff d = new PkDiff();
                 d.setScriptPk(new ArrayList<>(scriptPk));
                 d.setDbPk(new ArrayList<>(dbPk));
+                d.setDbPkName(dbTable.getPrimaryKeyName());
                 return d;
             }
         }
@@ -220,6 +223,11 @@ public class DbSchemaComparator {
                     d.setScriptIndexName(scriptIdx.getIndexName());
                     d.setScriptColumns(new ArrayList<>(scriptIdx.getColumnNames()));
                     d.setScriptUnique(scriptIdx.isUnique());
+                    MetadataExtractor.DbIndexInfo sameName = findDbIndexByName(scriptIdx.getIndexName(), dbIndexes);
+                    if (sameName != null) {
+                        d.setDbIndexName(sameName.getIndexName());
+                        d.setDbUnique(sameName.isUnique());
+                    }
                     result.add(d);
                 } else {
                     // 索引存在，检查唯一性是否一致
@@ -268,6 +276,19 @@ public class DbSchemaComparator {
                 }
             }
             if (match) {
+                return dbIdx;
+            }
+        }
+        return null;
+    }
+
+    private MetadataExtractor.DbIndexInfo findDbIndexByName(String indexName,
+                                                            List<MetadataExtractor.DbIndexInfo> dbIndexes) {
+        if (indexName == null || indexName.isEmpty() || dbIndexes == null || dbIndexes.isEmpty()) {
+            return null;
+        }
+        for (MetadataExtractor.DbIndexInfo dbIdx : dbIndexes) {
+            if (dbIdx.getIndexName() != null && indexName.equalsIgnoreCase(dbIdx.getIndexName())) {
                 return dbIdx;
             }
         }
@@ -477,11 +498,14 @@ public class DbSchemaComparator {
     public static class PkDiff {
         private List<String> scriptPk = new ArrayList<>();
         private List<String> dbPk = new ArrayList<>();
+        private String dbPkName;
 
         public List<String> getScriptPk() { return scriptPk; }
         public void setScriptPk(List<String> scriptPk) { this.scriptPk = scriptPk; }
         public List<String> getDbPk() { return dbPk; }
         public void setDbPk(List<String> dbPk) { this.dbPk = dbPk; }
+        public String getDbPkName() { return dbPkName; }
+        public void setDbPkName(String dbPkName) { this.dbPkName = dbPkName; }
     }
 
     /**

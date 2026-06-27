@@ -243,6 +243,28 @@ public class DbCheckService {
     }
 
     /**
+     * 根据脚本唯一标识获取可下载的脚本资源
+     *
+     * @param scriptKey 脚本唯一标识
+     * @return 脚本资源，未找到返回 null
+     */
+    public SqlScriptScanner.SqlScript getScriptByKey(String scriptKey) {
+        if (scriptKey == null || scriptKey.trim().isEmpty()) {
+            return null;
+        }
+        String dbType = resolveDbType();
+        List<SqlScriptScanner.SqlScript> scripts = sqlScriptScanner.scanScripts(
+                dbCheckProperties.getLocations(), dbType);
+        String key = scriptKey.trim();
+        for (SqlScriptScanner.SqlScript script : scripts) {
+            if (key.equals(script.getScriptKey())) {
+                return script;
+            }
+        }
+        return null;
+    }
+
+    /**
      * 根据 scriptKeys 过滤脚本列表
      */
     private List<SqlScriptScanner.SqlScript> filterScriptsByKeys(
@@ -986,17 +1008,38 @@ public class DbCheckService {
             selected.add(n.toLowerCase());
         }
 
+        List<String> sqls = new ArrayList<>();
+
         // 从数据库获取表元数据
         List<MetadataExtractor.DbTableInfo> allDbTables = metadataExtractor.getAllTables();
 
-        List<MetadataExtractor.DbTableInfo> filtered = new ArrayList<>();
+        // 记录已在数据库中找到的表名
+        Set<String> foundInDb = new HashSet<>();
         for (MetadataExtractor.DbTableInfo t : allDbTables) {
             if (selected.contains(t.getTableName().toLowerCase())) {
-                filtered.add(t);
+                sqls.addAll(schemaSyncService.generateCreateSqlsForExtraTables(
+                        Collections.singletonList(t), dbType));
+                foundInDb.add(t.getTableName().toLowerCase());
             }
         }
 
-        return schemaSyncService.generateCreateSqlsForExtraTables(filtered, dbType);
+        // 数据库中不存在的表（缺失表），从脚本定义生成 CREATE TABLE
+        Set<String> missingInDb = new HashSet<>(selected);
+        missingInDb.removeAll(foundInDb);
+        if (!missingInDb.isEmpty()) {
+            List<SqlScriptScanner.SqlScript> scripts = sqlScriptScanner.scanScripts(
+                    dbCheckProperties.getLocations(), dbType);
+            for (SqlScriptScanner.SqlScript script : scripts) {
+                SimpleSqlParser.ParseResult parseResult = simpleSqlParser.parseSqlScript(script.getContent());
+                for (SimpleSqlParser.TableDefinition table : parseResult.getTableDefinitions()) {
+                    if (missingInDb.contains(table.getTableName().toLowerCase())) {
+                        sqls.add(schemaSyncService.generateCreateTableSql(table, dbType, null));
+                    }
+                }
+            }
+        }
+
+        return sqls;
     }
 
     /**
@@ -1017,16 +1060,37 @@ public class DbCheckService {
             selected.add(n.toLowerCase());
         }
 
+        List<String> sqls = new ArrayList<>();
+
+        // 从数据库获取表元数据
         List<MetadataExtractor.DbTableInfo> allDbTables = metadataExtractor.getAllTables(conn);
 
-        List<MetadataExtractor.DbTableInfo> filtered = new ArrayList<>();
+        Set<String> foundInDb = new HashSet<>();
         for (MetadataExtractor.DbTableInfo t : allDbTables) {
             if (selected.contains(t.getTableName().toLowerCase())) {
-                filtered.add(t);
+                sqls.addAll(schemaSyncService.generateCreateSqlsForExtraTables(
+                        Collections.singletonList(t), dbType));
+                foundInDb.add(t.getTableName().toLowerCase());
             }
         }
 
-        return schemaSyncService.generateCreateSqlsForExtraTables(filtered, dbType);
+        // 数据库中不存在的表（缺失表），从脚本定义生成 CREATE TABLE
+        Set<String> missingInDb = new HashSet<>(selected);
+        missingInDb.removeAll(foundInDb);
+        if (!missingInDb.isEmpty()) {
+            List<SqlScriptScanner.SqlScript> scripts = sqlScriptScanner.scanScripts(
+                    dbCheckProperties.getLocations(), dbType);
+            for (SqlScriptScanner.SqlScript script : scripts) {
+                SimpleSqlParser.ParseResult parseResult = simpleSqlParser.parseSqlScript(script.getContent());
+                for (SimpleSqlParser.TableDefinition table : parseResult.getTableDefinitions()) {
+                    if (missingInDb.contains(table.getTableName().toLowerCase())) {
+                        sqls.add(schemaSyncService.generateCreateTableSql(table, dbType, null));
+                    }
+                }
+            }
+        }
+
+        return sqls;
     }
 
     private DbCheckResult.SchemaCheckResult buildSchemaResult(

@@ -116,6 +116,7 @@ public class MetadataExtractor {
 
             // 3. 读取主键信息（先尝试 JDBC API，失败后回退到 information_schema）
             Map<String, List<String>> primaryKeysByTable = new LinkedHashMap<>();
+            Map<String, String> primaryKeyNamesByTable = new LinkedHashMap<>();
             // 3a. JDBC API
             String[][] pkParams = {
                 {useCatalog, useSchema},
@@ -133,12 +134,16 @@ public class MetadataExtractor {
                         String colName = pkRs.getString("COLUMN_NAME");
                         if (tableName == null) continue;
                         primaryKeysByTable.computeIfAbsent(tableName, k -> new ArrayList<>()).add(colName);
+                        String pkName = pkRs.getString("PK_NAME");
+                        if (pkName != null && !pkName.isEmpty()) {
+                            primaryKeyNamesByTable.put(tableName, pkName);
+                        }
                     }
                 } catch (Exception ignored) { }
             }
             // 3b. information_schema 回退（兼容 MySQL 系列驱动缺陷）
             if (primaryKeysByTable.isEmpty() && firstTableCat != null && !firstTableCat.isEmpty()) {
-                String sql = "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE "
+                String sql = "SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE "
                         + "WHERE TABLE_SCHEMA = ? AND CONSTRAINT_NAME = 'PRIMARY' ORDER BY TABLE_NAME, ORDINAL_POSITION";
                 try (java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setString(1, firstTableCat);
@@ -148,6 +153,10 @@ public class MetadataExtractor {
                             String colName = rs.getString("COLUMN_NAME");
                             if (tableName == null) continue;
                             primaryKeysByTable.computeIfAbsent(tableName, k -> new ArrayList<>()).add(colName);
+                            String pkName = rs.getString("CONSTRAINT_NAME");
+                            if (pkName != null && !pkName.isEmpty()) {
+                                primaryKeyNamesByTable.put(tableName, pkName);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -191,6 +200,7 @@ public class MetadataExtractor {
                 List<String> pkCols = primaryKeysByTable.get(tn);
                 if (pkCols != null && !pkCols.isEmpty()) {
                     tableInfo.setPrimaryKeyColumns(pkCols);
+                    tableInfo.setPrimaryKeyName(primaryKeyNamesByTable.get(tn));
                     if (cols != null) {
                         for (DbColumnInfo col : cols) {
                             if (pkCols.contains(col.getName())) {
@@ -453,6 +463,8 @@ public class MetadataExtractor {
         private List<DbColumnInfo> columns = new ArrayList<>();
         /** 主键列名列表（按顺序） */
         private List<String> primaryKeyColumns = new ArrayList<>();
+        /** 主键约束名 */
+        private String primaryKeyName;
         /** 索引列表 */
         private List<DbIndexInfo> indexList = new ArrayList<>();
 
@@ -468,6 +480,8 @@ public class MetadataExtractor {
         public void setColumns(List<DbColumnInfo> columns) { this.columns = columns; }
         public List<String> getPrimaryKeyColumns() { return primaryKeyColumns; }
         public void setPrimaryKeyColumns(List<String> primaryKeyColumns) { this.primaryKeyColumns = primaryKeyColumns; }
+        public String getPrimaryKeyName() { return primaryKeyName; }
+        public void setPrimaryKeyName(String primaryKeyName) { this.primaryKeyName = primaryKeyName; }
         public List<DbIndexInfo> getIndexList() { return indexList; }
         public void setIndexList(List<DbIndexInfo> indexList) { this.indexList = indexList; }
     }

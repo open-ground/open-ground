@@ -105,13 +105,12 @@ public class DataSyncService {
         }
         insertSql.append(") VALUES (").append(values).append(")");
 
-        // MySQL: INSERT ... ON DUPLICATE KEY UPDATE
+        // MySQL: INSERT ... ON DUPLICATE KEY UPDATE（使用 VALUES(col) 兼容 MySQL 5.7）
         if (DbCheckUtils.isMysql(dbType)) {
-            insertSql.append(" AS new ON DUPLICATE KEY UPDATE ");
+            insertSql.append(" ON DUPLICATE KEY UPDATE ");
             for (int i = 0; i < columns.size(); i++) {
                 insertSql.append(DbCheckUtils.quoteId(columns.get(i), dbType));
-                // MySQL 8.0.20+ 推荐使用 NEW.col 替代 VALUES(col)
-                insertSql.append(" = new.").append(DbCheckUtils.quoteId(columns.get(i), dbType));
+                insertSql.append(" = VALUES(").append(DbCheckUtils.quoteId(columns.get(i), dbType)).append(")");
                 if (i < columns.size() - 1) {
                     insertSql.append(", ");
                 }
