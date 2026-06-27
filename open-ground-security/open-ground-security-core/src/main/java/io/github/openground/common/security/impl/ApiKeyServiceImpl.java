@@ -5,7 +5,7 @@ import io.github.openground.base.utils.IdUtil;
 import io.github.openground.common.security.ApiKeyDO;
 import io.github.openground.common.security.ApiKeyResponseVO;
 import io.github.openground.common.security.ApiKeyService;
-import io.github.openground.common.security.AuthProperties;
+import io.github.openground.common.security.SecurityProperties;
 import io.github.openground.common.security.SecurityErrorCode;
 import io.github.openground.common.security.mapper.ApiKeyMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -46,13 +46,13 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private ApiKeyMapper apiKeyMapper;
 
     @Autowired
-    private AuthProperties authProperties;
+    private SecurityProperties securityProperties;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ApiKeyResponseVO generateKey(String userId, String username, String name, Long expireTime) {
         // 检查用户有效 Key 数量是否超过限制
-        int maxActiveKeys = authProperties.getApiKey().getMaxActiveKeys();
+        int maxActiveKeys = securityProperties.getApiKey().getMaxActiveKeys();
         int activeCount = apiKeyMapper.countActiveByUserId(userId);
         if (activeCount >= maxActiveKeys) {
             log.warn("用户 {} 的 API Key 数量已达上限 ({})", username, maxActiveKeys);

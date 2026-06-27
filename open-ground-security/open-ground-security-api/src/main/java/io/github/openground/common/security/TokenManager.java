@@ -41,7 +41,7 @@ public class TokenManager {
     private TokenStore tokenStore;
 
     @Autowired
-    private AuthProperties authProperties;
+    private SecurityProperties securityProperties;
 
     /**
      * Token 刷新黑名单路径
@@ -68,7 +68,7 @@ public class TokenManager {
         try {
             String userInfoStr = JSON.toJSONString(userDetails);
             SessionEntity session = new SessionEntity();
-            long expireTime = System.currentTimeMillis() + authProperties.getTokenTimeout() * 60 * 1000L;
+            long expireTime = System.currentTimeMillis() + securityProperties.getTokenTimeout() * 60 * 1000L;
             session.setLastAccessTime(new Date());
             session.setSessionData(userInfoStr);
 
@@ -77,7 +77,7 @@ public class TokenManager {
             if (list != null && !list.isEmpty()) {
                 session = list.get(0);
                 // 多设备登录控制
-                if (!authProperties.getMultiLogin() && parameters != null && !parameters.containsKey("kick")) {
+                if (!securityProperties.getMultiLogin() && parameters != null && !parameters.containsKey("kick")) {
                     UserDetails loginUser = null;
                     try {
                         loginUser = JSON.parseObject(session.getSessionData(), DefaultUserDetails.class);
@@ -157,7 +157,7 @@ public class TokenManager {
         }
 
         if (!REFRESH_BLACKLIST.contains(requestPath)) {
-            long newExpireTime = System.currentTimeMillis() + authProperties.getTokenTimeout() * 60 * 1000L;
+            long newExpireTime = System.currentTimeMillis() + securityProperties.getTokenTimeout() * 60 * 1000L;
             session.setExpireTime(paseTime(newExpireTime));
             session.setLastAccessTime(new Date());
             log.debug("user: {}, token refresh: {}", session.getUsername(), newExpireTime);

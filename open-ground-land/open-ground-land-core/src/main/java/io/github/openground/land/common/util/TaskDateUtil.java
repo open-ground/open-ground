@@ -1,7 +1,6 @@
 package io.github.openground.land.common.util;
 
 import cn.hutool.core.util.ObjectUtil;
-import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
@@ -10,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.ParsePosition;
@@ -561,7 +561,7 @@ public class TaskDateUtil implements ApplicationContextAware {
      * @param date    目标日期字符
      * @param regular 正则表达式
      * @return boolean
-     * @Author adtec-maohuafeng
+     * @Author open-ground
      * @version 1.0
      * @since 2014-2-11 下午4:58:28
      */
@@ -622,7 +622,7 @@ public class TaskDateUtil implements ApplicationContextAware {
      * @param year
      * @param month
      * @return
-     * @Author adtec-maohuafeng
+     * @Author open-ground
      * @version 1.0
      * @since 2015-1-17 下午5:54:59
      */
@@ -641,7 +641,7 @@ public class TaskDateUtil implements ApplicationContextAware {
      * @param year
      * @param month
      * @return
-     * @Author adtec-maohuafeng
+     * @Author open-ground
      * @version 1.0
      * @since 2015-1-17 下午5:54:59
      */
@@ -752,7 +752,7 @@ public class TaskDateUtil implements ApplicationContextAware {
      * @param now
      * @param origDate
      * @description:
-     * @author zhangqs
+     * @author open-ground
      * @date 2018年7月4日 下午9:02:17
      */
     protected static void setMonth(Calendar c, Calendar now, Calendar origDate) {
@@ -775,7 +775,7 @@ public class TaskDateUtil implements ApplicationContextAware {
      * @param c
      * @param now
      * @description:
-     * @author zhangqs
+     * @author open-ground
      * @date 2018年7月4日 下午8:15:39
      */
     protected static void setDay(Calendar c, Calendar now, Calendar origDate) {

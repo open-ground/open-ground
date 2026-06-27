@@ -16,7 +16,7 @@ import java.util.List;
 @Data
 @Component
 @ConfigurationProperties(prefix = "ground.security")
-public class AuthProperties {
+public class SecurityProperties {
 
     /** Token 存储方式：db 或 redis */
     private String tokenStore = "db";

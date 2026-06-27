@@ -164,7 +164,7 @@ public class TaskDispatchServiceUtil {
      * @param task
      * @return
      * @description:
-     * @author zhangqs
+     * @author open-ground
      * @date 2018年9月11日 上午9:46:10
      */
     public static int getBatchNo(TaskDispatchConfigDomain task) {

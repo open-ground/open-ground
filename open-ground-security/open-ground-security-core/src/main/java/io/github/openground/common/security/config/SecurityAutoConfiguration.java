@@ -1,6 +1,6 @@
 package io.github.openground.common.security.config;
 
-import io.github.openground.common.security.AuthProperties;
+import io.github.openground.common.security.SecurityProperties;
 import io.github.openground.common.security.impl.ApiKeyServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties(SecurityProperties.class)
 @ComponentScan(basePackages = "io.github.openground.common.security")
 @MapperScan("io.github.openground.common.security.mapper")
 public class SecurityAutoConfiguration {

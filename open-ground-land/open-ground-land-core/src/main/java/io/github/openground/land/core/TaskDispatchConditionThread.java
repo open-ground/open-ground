@@ -96,7 +96,7 @@ public class TaskDispatchConditionThread implements Runnable {
      *
      * @throws Exception
      * @description:
-     * @author zhangqs
+     * @author open-ground
      * @date 2018年12月1日 下午6:01:41
      */
     @SuppressWarnings("unchecked")
