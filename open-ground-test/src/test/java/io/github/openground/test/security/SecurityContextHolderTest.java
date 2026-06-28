@@ -63,7 +63,7 @@ class SecurityContextHolderTest {
                 .credentialsNonExpired(true)
                 .enabled(true)
                 .createTime(new Date())
-                .lastLoginTime(new Date())
+                .lastLoginTime(System.currentTimeMillis())
                 .clientIp("127.0.0.1")
                 .build();
 

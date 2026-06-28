@@ -25,6 +25,21 @@ public class RequestLogProperties {
     /** Body 最大字节数，超过则截断，默认 10240（10KB） */
     private int maxBodyLength = 10240;
 
+    /**
+     * 扫描的 Controller 包路径前缀列表
+     * <p>为空时拦截所有 {@code @Controller} / {@code @RestController}，非空时只拦截指定包下的 controller。</p>
+     */
+    private List<String> scanPackages = new ArrayList<>();
+
+    /**
+     * 是否配置了扫描包限制
+     *
+     * @return true 表示需要按包过滤
+     */
+    public boolean hasScanPackages() {
+        return scanPackages != null && !scanPackages.isEmpty();
+    }
+
     /** 排除的 URL 模式（Ant 路径模式），如 /swagger-ui/** */
     private List<String> excludeUrls = new ArrayList<>();
 

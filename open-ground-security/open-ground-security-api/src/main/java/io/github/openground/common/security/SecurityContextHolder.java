@@ -19,6 +19,7 @@ public final class SecurityContextHolder {
 
     /**
      * 设置当前用户
+     *
      * @param userDetails 用户详情
      */
     public static void setCurrentUser(UserDetails userDetails) {
@@ -27,6 +28,7 @@ public final class SecurityContextHolder {
 
     /**
      * 获取当前用户
+     *
      * @return 用户详情，未登录返回 null
      */
     public static UserDetails getCurrentUser() {
@@ -35,6 +37,7 @@ public final class SecurityContextHolder {
 
     /**
      * 获取当前用户名
+     *
      * @return 用户名，未登录返回 null
      */
     public static String getCurrentUsername() {
@@ -43,7 +46,21 @@ public final class SecurityContextHolder {
     }
 
     /**
+     * 获取当前展示用户名 （username/姓名）
+     *
+     * @return 用户名，未登录返回 null
+     */
+    public static String getCurrentDisplayName() {
+        UserDetails user = getCurrentUser();
+        if (user != null) {
+            return user.getUsername() + "/" + user.getRealName();
+        }
+        return null;
+    }
+
+    /**
      * 获取当前用户ID
+     *
      * @return 用户ID，未登录返回 null
      */
     public static Long getCurrentUserId() {

@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * UserDetails 默认实现
@@ -37,8 +38,8 @@ public class DefaultUserDetails implements UserDetails {
     private boolean credentialsNonExpired;
     private boolean enabled;
     private Date createTime;
-    private Date lastLoginTime;
-    private String extData;
+    private Long lastLoginTime;
+    private Map<String, Object> extData;
     private String clientIp;
 
     @Override

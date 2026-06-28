@@ -3,6 +3,7 @@ package io.github.openground.common.security.spi;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * 用户详情接口
@@ -140,13 +141,13 @@ public interface UserDetails extends Serializable {
      * 获取最后登录时间
      * @return 最后登录时间
      */
-    Date getLastLoginTime();
+    Long getLastLoginTime();
 
     /**
      * 获取扩展数据（JSON格式）
      * @return 扩展数据
      */
-    String getExtData();
+    Map<String, Object> getExtData();
 
     /**
      * 获取客户端IP

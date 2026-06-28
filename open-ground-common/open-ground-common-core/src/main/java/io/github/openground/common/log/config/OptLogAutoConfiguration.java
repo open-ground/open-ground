@@ -50,6 +50,7 @@ public class OptLogAutoConfiguration {
     public OptLogAspect optLogAspect(OptLogProperties properties) {
         OptLogAspect aspect = new OptLogAspect();
         aspect.setLogLength(properties.getLogLength());
+        aspect.setFilterNullParams(properties.isFilterNullParams());
         return aspect;
     }
 

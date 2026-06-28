@@ -150,7 +150,7 @@ public class CommonRequestFilter implements Filter {
             urlRegularCheck(request, requestStr);
         }
 
-        log.debug("end do CommonRequestFilter, time: {}ms", System.currentTimeMillis() - start.getTime());
+        log.info("end do CommonRequestFilter, time: {}ms", System.currentTimeMillis() - start.getTime());
         filterChain.doFilter(requestWrapper, response);
     }
 

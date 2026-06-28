@@ -1,6 +1,8 @@
 package io.github.openground.common.log.aspect;
 
-import com.alibaba.fastjson.JSONObject;
+import cn.hutool.core.util.ObjectUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import io.github.openground.base.utils.IpUtils;
 import io.github.openground.base.utils.RequestUtil;
 import io.github.openground.common.keygen.KeyGenerator;
@@ -8,7 +10,9 @@ import io.github.openground.common.log.annotation.OptLog;
 import io.github.openground.common.log.domain.SysOptLog;
 import io.github.openground.common.log.enums.OptStatus;
 import io.github.openground.common.log.event.OptLogEvent;
+import io.github.openground.common.security.SecurityContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
@@ -19,12 +23,11 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -55,8 +58,15 @@ public class OptLogAspect {
 
     private int logLength = 2000;
 
+    /** 是否过滤 null 参数 */
+    private boolean filterNullParams = true;
+
     public void setLogLength(int logLength) {
         this.logLength = logLength;
+    }
+
+    public void setFilterNullParams(boolean filterNullParams) {
+        this.filterNullParams = filterNullParams;
     }
 
     @Pointcut("@annotation(io.github.openground.common.log.annotation.OptLog)")
@@ -89,6 +99,9 @@ public class OptLogAspect {
                 optLog.setOptUrl(request.getRequestURI());
                 optLog.setUserId(request.getHeader("userCode"));
             }
+            if(ObjectUtil.isEmpty(optLog.getUserId())){
+                optLog.setUserId(SecurityContextHolder.getCurrentDisplayName());
+            }
 
             optLog.setSysTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
 
@@ -107,7 +120,7 @@ public class OptLogAspect {
             optLog.setOptRemark(controllerLog.optRemark());
 
             if (controllerLog.isSaveRequestData() && request != null) {
-                String params = getRequestParams(request);
+                String params = getRequestParams(joinPoint, request);
                 optLog.setOptParam(truncate(params, logLength));
             }
 
@@ -130,23 +143,42 @@ public class OptLogAspect {
         return null;
     }
 
-    private String getRequestParams(HttpServletRequest request) {
-        String method = request.getMethod();
+    private String getRequestParams(JoinPoint joinPoint, HttpServletRequest request) {
         try {
-            if (RequestMethod.GET.name().equals(method)) {
-                Map<String, String[]> map = request.getParameterMap();
-                return JSONObject.toJSONString(map);
-            } else {
-                InputStream in = request.getInputStream();
-                if (in != null) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line);
+            // 优先从方法参数获取（可靠，支持流已消费的情况）
+            Object[] args = joinPoint.getArgs();
+            if (args != null && args.length > 0) {
+                MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+                Method method = signature.getMethod();
+                Parameter[] parameters = method.getParameters();
+                StringBuilder sb = new StringBuilder("{");
+                boolean hasParam = false;
+                for (int i = 0; i < args.length; i++) {
+                    // 跳过 Servlet 和文件上传参数
+                    if (args[i] instanceof HttpServletRequest || args[i] instanceof HttpServletResponse
+                            || args[i] instanceof MultipartFile || args[i] instanceof MultipartFile[]) {
+                        continue;
                     }
+                    if (hasParam) {
+                        sb.append(", ");
+                    }
+                    String paramName = parameters[i].getName();
+                    String paramValue = filterNullParams
+                            ? JSON.toJSONString(args[i])
+                            : JSON.toJSONString(args[i], SerializerFeature.WriteMapNullValue);
+                    sb.append("\"").append(paramName).append("\":").append(paramValue);
+                    hasParam = true;
+                }
+                if (hasParam) {
+                    sb.append("}");
                     return sb.toString();
                 }
+            }
+
+            // 回退：从 request 获取（仅 GET/DELETE 有效）
+            Map<String, String[]> paramMap = request.getParameterMap();
+            if (paramMap != null && !paramMap.isEmpty()) {
+                return JSON.toJSONString(paramMap);
             }
         } catch (Exception ex) {
             log.warn("获取请求参数失败", ex);

@@ -125,10 +125,9 @@ public class GlobalExceptionHandlerControllerAdvice {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<CommonResult> handleException(HttpServletRequest request, HttpServletResponse response, Exception e) {
         // SSE 客户端断开导致的 AsyncRequestNotUsableException 是预期行为，降级为 DEBUG 日志
-        if (e instanceof AsyncRequestNotUsableException
-                && response.getContentType() != null
-                && response.getContentType().contains(MediaType.TEXT_EVENT_STREAM_VALUE)) {
-            log.debug("[URI: {}] SSE 客户端断开: {}", request.getRequestURI(), e.getMessage());
+        if (("/log/tail".equalsIgnoreCase(request.getServletPath())) ||
+                e instanceof AsyncRequestNotUsableException && response.getContentType() != null && response.getContentType().contains(MediaType.TEXT_EVENT_STREAM_VALUE)) {
+            log.warn("[URI: {}] SSE 客户端断开: {}", request.getRequestURI(), e.getMessage());
             return null;
         }
 

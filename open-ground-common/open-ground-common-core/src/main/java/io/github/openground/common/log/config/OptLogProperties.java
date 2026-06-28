@@ -18,4 +18,11 @@ public class OptLogProperties {
 
     /** 日志参数最大字节数，默认 2000 */
     private int logLength = 2000;
+
+    /**
+     * 序列化请求参数时是否过滤 null 值
+     * <p>同时控制 {@code RequestLogAspect} 和 {@code OptLogAspect} 的参数输出。
+     * {@code true} 时跳过 null 字段，{@code false} 时保留 null 字段。</p>
+     */
+    private boolean filterNullParams = true;
 }

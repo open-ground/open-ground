@@ -69,6 +69,9 @@ public class RequestLogAspect {
     /** 配置属性 */
     private RequestLogProperties properties;
 
+    /** 是否过滤 null 参数（从 OptLogProperties 共享） */
+    private boolean filterNullParams = true;
+
     /**
      * 设置配置属性
      *
@@ -78,14 +81,23 @@ public class RequestLogAspect {
         this.properties = properties;
     }
 
+    public void setFilterNullParams(boolean filterNullParams) {
+        this.filterNullParams = filterNullParams;
+    }
+
     /**
      * 环绕通知：拦截所有 Controller 方法，打印请求/响应日志
+     *
+     * <p>默认拦截所有 {@code @Controller} / {@code @RestController} 注解的类。
+     * 若配置了 {@code ground.log.request-log.scan-packages}，则只拦截指定包路径下的 controller。
      *
      * @param joinPoint 连接点
      * @return 目标方法返回值
      * @throws Throwable 目标方法抛出的异常
      */
-    @Around("execution(* io.github.openground..controller..*.*(..))")
+    @Around("execution(* *(..)) && " +
+            "(@within(org.springframework.stereotype.Controller) || " +
+            "@within(org.springframework.web.bind.annotation.RestController))")
     public Object logRequestResponse(ProceedingJoinPoint joinPoint) throws Throwable {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
@@ -94,6 +106,16 @@ public class RequestLogAspect {
 
         HttpServletRequest request = attributes.getRequest();
         String uri = request.getRequestURI();
+
+        // 检查包路径限制（若配置了 scanPackages）
+        if (properties != null && properties.hasScanPackages()) {
+            String className = joinPoint.getTarget().getClass().getName();
+            boolean matched = properties.getScanPackages().stream()
+                    .anyMatch(pkg -> className.startsWith(pkg));
+            if (!matched) {
+                return joinPoint.proceed();
+            }
+        }
 
         // 检查排除 URL
         if (isExcluded(uri)) {
@@ -336,7 +358,9 @@ public class RequestLogAspect {
                     sb.append(", ");
                 }
                 String paramName = parameters[i].getName();
-                String paramValue = JSON.toJSONString(args[i], SerializerFeature.WriteMapNullValue);
+                String paramValue = filterNullParams
+                        ? JSON.toJSONString(args[i])
+                        : JSON.toJSONString(args[i], SerializerFeature.WriteMapNullValue);
                 sb.append("\"").append(paramName).append("\":").append(paramValue);
                 hasParam = true;
             }

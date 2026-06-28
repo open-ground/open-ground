@@ -33,11 +33,12 @@ public class RequestLogAutoConfiguration {
      * @return RequestLogAspect 实例
      */
     @Bean
-    public RequestLogAspect requestLogAspect(RequestLogProperties properties) {
+    public RequestLogAspect requestLogAspect(RequestLogProperties properties, OptLogProperties optLogProperties) {
         log.info("初始化 RequestLogAspect（请求/响应日志），maxBodyLength={}, excludeUrls={}",
                 properties.getMaxBodyLength(), properties.getExcludeUrls());
         RequestLogAspect aspect = new RequestLogAspect();
         aspect.setProperties(properties);
+        aspect.setFilterNullParams(optLogProperties.isFilterNullParams());
         return aspect;
     }
 }
