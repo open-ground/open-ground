@@ -3,6 +3,9 @@ package io.github.openground.common.filter.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * CommonRequestFilter 配置属性
  *
@@ -55,6 +58,12 @@ public class RequestFilterProperties {
      * <p>启用后需要注入 {@link io.github.openground.common.filter.TokenCheckService} 的实现 Bean。</p>
      */
     private boolean tokenCheckEnabled = false;
+
+    /**
+     * 白名单 URL 模式列表（Ant 路径模式）
+     * <p>匹配的 URL 将跳过所有检查（Token 校验、解密验签、URL 检查等）。</p>
+     */
+    private List<String> whiteList = new ArrayList<>();
 
     /**
      * Filter 排序号，用于 FilterRegistrationBean

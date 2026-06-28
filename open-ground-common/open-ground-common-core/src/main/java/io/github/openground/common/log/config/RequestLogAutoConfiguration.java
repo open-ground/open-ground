@@ -21,7 +21,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @Slf4j
 @AutoConfiguration
 @EnableAspectJAutoProxy(proxyTargetClass = true)
-@EnableConfigurationProperties(RequestLogProperties.class)
+@EnableConfigurationProperties({RequestLogProperties.class, OptLogProperties.class})
 @ConditionalOnProperty(prefix = "ground.log.request-log", name = "enabled", havingValue = "true")
 public class RequestLogAutoConfiguration {
 

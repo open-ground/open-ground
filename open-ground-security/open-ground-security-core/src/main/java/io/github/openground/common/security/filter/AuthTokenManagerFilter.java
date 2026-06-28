@@ -9,6 +9,7 @@ import io.github.openground.common.security.TokenManager;
 import io.github.openground.common.security.config.TokenFilterProperties;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -46,10 +47,20 @@ public class AuthTokenManagerFilter implements Filter {
     private final PathMatcher pathMatcher = new AntPathMatcher();
 
     @Setter
-    private List<String> whiteList;
+    protected List<String> whiteList;
 
     @Setter
     private boolean enabled = true;
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        initWhiteList(whiteList);
+        Filter.super.init(filterConfig);
+    }
+
+    protected void initWhiteList(List<String> whiteList) {
+
+    }
 
     public AuthTokenManagerFilter(TokenManager tokenManager, TokenExtractor tokenExtractor) {
         this.tokenManager = tokenManager;

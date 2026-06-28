@@ -1,7 +1,10 @@
 package io.github.openground.common.logviewer;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * 日志查看器自动配置
@@ -15,4 +18,14 @@ import org.springframework.context.annotation.ComponentScan;
 @AutoConfiguration
 @ComponentScan("io.github.openground.common.logviewer")
 public class LogViewerAutoConfiguration {
+
+    /**
+     * 默认 RestTemplate，用于跨节点日志代理请求
+     * <p>下游应用可通过自定义 {@code @Bean} 覆盖此默认实现。</p>
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 }

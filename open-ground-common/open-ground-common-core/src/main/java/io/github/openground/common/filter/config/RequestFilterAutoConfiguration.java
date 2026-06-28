@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 
 /**
  * CommonRequestFilter 自动配置（Auth 模式）
@@ -37,11 +38,13 @@ public class RequestFilterAutoConfiguration {
     @ConditionalOnMissingBean(CommonRequestFilter.class)
     public FilterRegistrationBean<CommonRequestFilter> registRequestFilter(
             RequestFilterProperties properties,
-            ObjectProvider<TokenCheckService> tokenCheckServiceProvider) {
+            ObjectProvider<TokenCheckService> tokenCheckServiceProvider,
+            Environment environment) {
         log.info("注册 CommonRequestFilter，order={}, tokenCheckEnabled={}, decryptEnabled={}, urlRegularEnabled={}",
                 properties.getOrder(), properties.isTokenCheckEnabled(), properties.isDecryptEnabled(), properties.isUrlRegularEnabled());
 
         CommonRequestFilter filter = new CommonRequestFilter(properties);
+        filter.setEnvironment(environment);
         tokenCheckServiceProvider.ifAvailable(filter::setTokenCheckService);
 
         FilterRegistrationBean<CommonRequestFilter> registration = new FilterRegistrationBean<>();

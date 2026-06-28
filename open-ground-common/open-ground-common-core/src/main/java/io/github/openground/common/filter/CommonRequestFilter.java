@@ -10,16 +10,20 @@ import io.github.openground.base.utils.SignUtil;
 import io.github.openground.common.filter.config.RequestFilterProperties;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.PathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpServerErrorException;
 
@@ -27,7 +31,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -58,6 +64,14 @@ public class CommonRequestFilter implements Filter {
 
     private final RequestFilterProperties properties;
 
+    protected List<String> whiteList = new ArrayList<>();
+
+    /** 部署模式（由 Environment 注入，可选） */
+    private String mode;
+
+    /** Ant 路径匹配器（用于白名单 URL 匹配） */
+    private final PathMatcher pathMatcher = new AntPathMatcher();
+
     /**
      * Token 校验服务（由业务模块 SPI 实现）
      */
@@ -65,6 +79,26 @@ public class CommonRequestFilter implements Filter {
 
     public CommonRequestFilter(RequestFilterProperties properties) {
         this.properties = properties;
+    }
+
+    protected void initWhiteList(RequestFilterProperties properties) {
+
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        whiteList.addAll(properties.getWhiteList());
+        initWhiteList(properties);
+        Filter.super.init(filterConfig);
+    }
+
+    /**
+     * 设置 Spring Environment（用于读取部署模式等配置）
+     *
+     * @param environment Spring Environment
+     */
+    public void setEnvironment(Environment environment) {
+        this.mode = environment.getProperty("ground.mode", "auth");
     }
 
     /**
@@ -79,10 +113,23 @@ public class CommonRequestFilter implements Filter {
     /**
      * 白名单检查，子类可覆盖以添加自定义白名单逻辑
      *
+     * <p>默认实现检查配置中的 {@code whiteList}（Ant 路径模式）。子类可覆盖此方法，
+     * 通过调用 {@code super.isWhiteList(request)} 保留配置白名单功能，再追加自定义逻辑。</p>
+     *
      * @param request 当前 HTTP 请求
      * @return true 表示放行，不执行任何检查
      */
     protected boolean isWhiteList(HttpServletRequest request) {
+        // 检查配置白名单
+        if (whiteList != null) {
+            String uri = request.getRequestURI();
+            for (String pattern : whiteList) {
+                if (pathMatcher.match(pattern, uri)) {
+                    log.debug("白名单放行: {} 匹配模式 {}", uri, pattern);
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -161,6 +208,11 @@ public class CommonRequestFilter implements Filter {
      */
     private boolean handleTokenCheck(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (tokenCheckService == null) {
+            // 集成模式（无 TokenCheckService 实现）：auth 自身已处理 Token 校验，跳过
+            if ("auth".equals(mode)) {
+                log.debug("TokenCheckService 未注入（集成模式），跳过 Token 校验");
+                return true;
+            }
             log.error("Token 校验已启用但未注入 TokenCheckService 实现 Bean");
             writeError(response, "token认证失败：未配置Token校验服务");
             return false;

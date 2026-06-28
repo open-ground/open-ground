@@ -15,6 +15,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
 /**
  * CommonRequestFilter 自动配置（Service 模式）
@@ -51,11 +52,13 @@ public class FeignRequestFilterAutoConfiguration {
     @ConditionalOnMissingBean(CommonRequestFilter.class)
     public FilterRegistrationBean<CommonRequestFilter> registRequestFilter(
             RequestFilterProperties properties,
-            TokenCheckService tokenCheckService) {
+            TokenCheckService tokenCheckService,
+            Environment environment) {
         log.info("注册 CommonRequestFilter（Service 模式），order={}, tokenCheckEnabled={}, decryptEnabled={}, urlRegularEnabled={}",
                 properties.getOrder(), properties.isTokenCheckEnabled(), properties.isDecryptEnabled(), properties.isUrlRegularEnabled());
 
         CommonRequestFilter filter = new CommonRequestFilter(properties);
+        filter.setEnvironment(environment);
         filter.setTokenCheckService(tokenCheckService);
 
         FilterRegistrationBean<CommonRequestFilter> registration = new FilterRegistrationBean<>();
