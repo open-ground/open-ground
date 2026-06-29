@@ -4,7 +4,9 @@ import io.github.openground.common.security.TokenManager;
 import io.github.openground.common.security.filter.AuthTokenManagerFilter;
 import io.github.openground.common.security.filter.DefaultTokenExtractor;
 import io.github.openground.common.security.filter.TokenExtractor;
+import io.github.openground.common.security.filter.TokenFilterWhiteListProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -13,6 +15,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+
+import java.util.List;
 
 /**
  * Token 鉴权过滤器自动配置
@@ -53,11 +57,16 @@ public class TokenFilterAutoConfiguration {
     public FilterRegistrationBean<AuthTokenManagerFilter> authTokenFilter(
             TokenManager tokenManager,
             TokenExtractor tokenExtractor,
-            TokenFilterProperties properties) {
+            TokenFilterProperties properties,
+            ObjectProvider<TokenFilterWhiteListProvider> whiteListProviderProvider) {
 
         AuthTokenManagerFilter filter = new AuthTokenManagerFilter(tokenManager, tokenExtractor);
         filter.setWhiteList(properties.getWhiteList());
         filter.setEnabled(properties.isEnabled());
+        List<TokenFilterWhiteListProvider> providers = whiteListProviderProvider.stream().toList();
+        if (!providers.isEmpty()) {
+            filter.setWhiteListProviders(providers);
+        }
 
         FilterRegistrationBean<AuthTokenManagerFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(filter);

@@ -2,6 +2,7 @@ package io.github.openground.common.filter.config;
 
 import io.github.openground.common.config.condition.ConditionalOnAuth;
 import io.github.openground.common.filter.CommonRequestFilter;
+import io.github.openground.common.filter.RequestFilterWhiteListProvider;
 import io.github.openground.common.filter.TokenCheckService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -12,6 +13,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
+
+import java.util.List;
 
 /**
  * CommonRequestFilter 自动配置（Auth 模式）
@@ -39,6 +42,7 @@ public class RequestFilterAutoConfiguration {
     public FilterRegistrationBean<CommonRequestFilter> registRequestFilter(
             RequestFilterProperties properties,
             ObjectProvider<TokenCheckService> tokenCheckServiceProvider,
+            ObjectProvider<RequestFilterWhiteListProvider> whiteListProviderProvider,
             Environment environment) {
         log.info("注册 CommonRequestFilter，order={}, tokenCheckEnabled={}, decryptEnabled={}, urlRegularEnabled={}",
                 properties.getOrder(), properties.isTokenCheckEnabled(), properties.isDecryptEnabled(), properties.isUrlRegularEnabled());
@@ -46,6 +50,10 @@ public class RequestFilterAutoConfiguration {
         CommonRequestFilter filter = new CommonRequestFilter(properties);
         filter.setEnvironment(environment);
         tokenCheckServiceProvider.ifAvailable(filter::setTokenCheckService);
+        List<RequestFilterWhiteListProvider> providers = whiteListProviderProvider.stream().toList();
+        if (!providers.isEmpty()) {
+            filter.setWhiteListProviders(providers);
+        }
 
         FilterRegistrationBean<CommonRequestFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(filter);

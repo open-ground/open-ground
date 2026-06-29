@@ -22,6 +22,7 @@ import org.springframework.util.PathMatcher;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -52,14 +53,40 @@ public class AuthTokenManagerFilter implements Filter {
     @Setter
     private boolean enabled = true;
 
+    /**
+     * 白名单提供者列表（由业务模块 SPI 实现）
+     */
+    private List<TokenFilterWhiteListProvider> whiteListProviders;
+
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
         initWhiteList(whiteList);
+        // 合并 SPI 白名单提供者的白名单
+        if (whiteListProviders != null) {
+            for (TokenFilterWhiteListProvider provider : whiteListProviders) {
+                List<String> providerWhiteList = provider.getWhiteList();
+                if (providerWhiteList != null) {
+                    if (whiteList == null) {
+                        whiteList = new ArrayList<>();
+                    }
+                    whiteList.addAll(providerWhiteList);
+                }
+            }
+        }
         Filter.super.init(filterConfig);
     }
 
     protected void initWhiteList(List<String> whiteList) {
 
+    }
+
+    /**
+     * 设置白名单提供者列表
+     *
+     * @param whiteListProviders 白名单提供者列表
+     */
+    public void setWhiteListProviders(List<TokenFilterWhiteListProvider> whiteListProviders) {
+        this.whiteListProviders = whiteListProviders;
     }
 
     public AuthTokenManagerFilter(TokenManager tokenManager, TokenExtractor tokenExtractor) {

@@ -77,6 +77,11 @@ public class CommonRequestFilter implements Filter {
      */
     private TokenCheckService tokenCheckService;
 
+    /**
+     * 白名单提供者列表（由业务模块 SPI 实现）
+     */
+    private List<RequestFilterWhiteListProvider> whiteListProviders;
+
     public CommonRequestFilter(RequestFilterProperties properties) {
         this.properties = properties;
     }
@@ -89,6 +94,15 @@ public class CommonRequestFilter implements Filter {
     public void init(FilterConfig filterConfig) throws ServletException {
         whiteList.addAll(properties.getWhiteList());
         initWhiteList(properties);
+        // 合并 SPI 白名单提供者的白名单
+        if (whiteListProviders != null) {
+            for (RequestFilterWhiteListProvider provider : whiteListProviders) {
+                List<String> providerWhiteList = provider.getWhiteList();
+                if (providerWhiteList != null) {
+                    whiteList.addAll(providerWhiteList);
+                }
+            }
+        }
         Filter.super.init(filterConfig);
     }
 
@@ -108,6 +122,15 @@ public class CommonRequestFilter implements Filter {
      */
     public void setTokenCheckService(TokenCheckService tokenCheckService) {
         this.tokenCheckService = tokenCheckService;
+    }
+
+    /**
+     * 设置白名单提供者列表
+     *
+     * @param whiteListProviders 白名单提供者列表
+     */
+    public void setWhiteListProviders(List<RequestFilterWhiteListProvider> whiteListProviders) {
+        this.whiteListProviders = whiteListProviders;
     }
 
     /**
