@@ -6,7 +6,7 @@
 
     <groupId>io.github.open-ground</groupId>
     <artifactId>open-ground-dependency</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>Open Ground Dependency BOM</name>
     <description>Open Ground 统一依赖版本管理 BOM</description>
