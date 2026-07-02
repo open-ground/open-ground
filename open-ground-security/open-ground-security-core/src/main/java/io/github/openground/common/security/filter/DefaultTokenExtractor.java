@@ -15,12 +15,19 @@ public class DefaultTokenExtractor implements TokenExtractor {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String PREFIX = "bearer ";
 
     @Override
     public String extract(HttpServletRequest request) {
         String header = request.getHeader(AUTHORIZATION_HEADER);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
+        if (header == null) {
+            return null;
+        }
+        if (header.startsWith(BEARER_PREFIX)) {
             return header.substring(BEARER_PREFIX.length()).trim();
+        }
+        if (header.startsWith(PREFIX)) {
+            return header.substring(PREFIX.length()).trim();
         }
         return null;
     }

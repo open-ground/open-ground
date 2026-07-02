@@ -18,7 +18,7 @@ open-ground (pom)
 ├── open-ground-base (jar)            — 核心 DTO、异常、工具类
 ├── open-ground-common (pom)          — 功能模块聚合
 │   ├── open-ground-common-api (jar)           — SPI 接口、注解、枚举、DTO（零 Spring 依赖）
-│   ├── open-ground-common-core (jar)          — AOP 切面、请求过滤器、自动配置
+│   ├── open-ground-common-core (jar)          — AOP 切面、请求过滤器、自动配置、Excel 导入导出
 │   └── open-ground-common-springcloud (jar)   — Feign 远程 SPI 实现（微服务模式）
 ├── open-ground-security (pom)        — 认证安全模块聚合
 │   ├── open-ground-security-api (jar)         — 认证 SPI 接口定义（零 Spring 依赖）
@@ -49,6 +49,7 @@ open-ground (pom)
 SPI 接口定义层，**零 Spring 依赖**，可被非 Spring 项目引用：
 
 - **操作日志 SPI** — `@OptLog` 注解、`LogSender` 接口、`SysOptLog` DTO、`OptType`/`OptStatus` 枚举、`OptLogEvent` 事件
+- **Excel 导入导出 SPI** — `@ExcelTemplate` 注解、`@ExcelField` 注解、`DictTranslator` 接口、`ExcelQueryProvider` 接口、`ExcelDataValidator` 接口、`ImportResult`/`ImportRowError` DTO
 - **序列号 SPI** — `SequenceProvider` 接口、`IdGenerator`（53 位雪花算法）、`KeyInfoDomain` 序列元数据
 - **条件注解** — `@ConditionalOnAuth`（集成模式）、`@ConditionalOnService`（微服务模式）
 
@@ -58,6 +59,7 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 
 - **请求过滤器** — `CommonRequestFilter`：Token 校验、AES/SM4 解密、签名验签、SQL 注入拦截、URL 非法字符检查。通过 `ground.security.request-filter.*` 配置
 - **操作日志** — `OptLogAspect` AOP 切面 + `JdbcLogSender`（JDBC 持久化），通过 `@EnableOptLog` 启用
+- **Excel 导入导出** — `GenericExcelController` 内置通用 REST 入口、`ExcelService` 核心服务、`TableQueryProvider`（MyBatis-Plus 自动查询/插入）、`ImportAnalysisListener`（EasyExcel 导入监听器），通过 `@ExcelTemplate` + `@ExcelField` 注解驱动，零代码开箱即用
 - **序列号生成** — `JdbcSequenceProvider`（基于数据库表 `SYS_AUTO_PMKEY`）、`KeyGenerator`（缓存式批量生成）、`Snowflake`（16 位雪花算法）
 - **对象存储** — `OssClient` 接口 + `S3OssClient`（AWS S3 SDK 实现），通过 `ground.oss.*` 配置
 
@@ -359,6 +361,170 @@ public class MyService {
         String url = ossClient.getObjectURL(key, 3600); // 1小时有效期
     }
 }
+```
+
+### 使用 Excel 导入导出组件
+
+> **零代码模式**：只需一个 VO 类 + 注解，自动注册 REST 端点，无需编写 Controller、Service、Mapper。
+
+#### ① 定义 VO 类
+
+```java
+@ExcelTemplate(tableName = "sys_user")  // 自动 SELECT * FROM sys_user
+public class UserExcelVO {
+
+    @ExcelField(headerName = "用户名", order = 1)
+    private String username;
+
+    @ExcelField(headerName = "昵称", order = 2)
+    private String nickname;
+
+    @ExcelField(headerName = "性别", order = 3, dictType = "gender")
+    private String gender;
+
+    @ExcelField(headerName = "邮箱", order = 4, required = true)
+    private String email;
+
+    @ExcelField(headerName = "创建时间", order = 5, dateFormat = "yyyy-MM-dd")
+    private Date createTime;
+}
+```
+
+#### ② 直接调用内置 REST 接口
+
+组件自动扫描所有 `@ExcelTemplate` 类并注册 URL，无需编写任何 Controller：
+
+| 方法 | URL | 说明 |
+|------|-----|------|
+| `POST` | `/ground/excel/{entityName}/export` | 导出 Excel（JSON body 传入查询条件） |
+| `POST` | `/ground/excel/{entityName}/import` | 导入 Excel，返回 JSON 结果（multipart file） |
+| `POST` | `/ground/excel/{entityName}/import?errorAsFile=true` | 导入 Excel，有错误时返回带错误原因的文件 |
+| `GET` | `/ground/excel/{entityName}/template` | 下载导入模板（仅表头） |
+| `GET` | `/ground/excel/entities` | 查看已注册实体列表 |
+
+`entityName` 自动生成规则：
+- `@ExcelTemplate(name = "user")` → 使用 `user`
+- `UserExcelVO` → `user-excel`（类名去掉 ExcelVO/VO 后缀，转 kebab-case）
+
+**参数查询示例（TABLE 模式）：**
+
+零代码模式下，通过 JSON body 传入查询参数，自动转为 SQL WHERE 条件（等值匹配）：
+
+```bash
+# 导出所有用户（不传 body）
+curl -X POST http://localhost:8080/ground/excel/user/export
+
+# 只导出用户名为 zhangsan 的记录
+curl -X POST http://localhost:8080/ground/excel/user/export \
+  -H "Content-Type: application/json" \
+  -d '{"username":"zhangsan"}'
+
+# 多条件组合：部门 = dev + 状态 = 1
+curl -X POST http://localhost:8080/ground/excel/user/export \
+  -H "Content-Type: application/json" \
+  -d '{"dept_id":"dev","status":"1"}'
+```
+
+生成的 SQL：`SELECT * FROM sys_user WHERE username = ? AND status = ?`（参数化防注入）
+
+> **提示**：目前仅支持等值（=）查询。如需复杂条件（LIKE、范围、排序等），请使用 CUSTOM 模式自定义 `ExcelQueryProvider`。
+
+#### ③ 自定义字典翻译
+
+默认字典翻译器不翻译，返回原值。实现 `DictTranslator` 接口并声明为 Spring Bean 即可覆盖：
+
+```java
+@Component
+public class MyDictTranslator implements DictTranslator {
+    @Override
+    public String translate(String dictType, String value) {
+        if ("gender".equals(dictType)) {
+            return "0".equals(value) ? "男" : "女";
+        }
+        if ("status".equals(dictType)) {
+            return "1".equals(value) ? "启用" : "禁用";
+        }
+        return value;
+    }
+}
+```
+
+导入时同样支持反向翻译（label → code），由同一个 `DictTranslator` 处理。
+
+#### ④ 自定义查询/落库逻辑
+
+当 `@ExcelTemplate(queryType = CUSTOM)` 时，框架调用自定义 `ExcelQueryProvider`：
+
+```java
+@Component
+public class UserExcelProvider implements ExcelQueryProvider {
+    @Override
+    public List<?> queryExportData(Map<String, Object> params) {
+        return userService.listByCustomCondition(params);
+    }
+
+    @Override
+    public void handleImport(List<?> data, Map<String, Object> params) {
+        for (Object row : data) {
+            userService.saveOrUpdate((UserExcelVO) row);
+        }
+    }
+}
+```
+
+```java
+@ExcelTemplate(queryProvider = UserExcelProvider.class, queryType = QueryType.CUSTOM)
+public class UserExcelVO { ... }
+```
+
+#### ⑤ 数据校验
+
+**必填校验**：`@ExcelField(required = true)`
+
+**自定义校验器**：实现 `ExcelDataValidator` 接口：
+
+```java
+public class PhoneValidator implements ExcelDataValidator {
+    @Override
+    public String validate(Object value, String headerName) {
+        String phone = (String) value;
+        if (phone != null && !phone.matches("^1[3-9]\\d{9}$")) {
+            return "手机号格式不正确";
+        }
+        return null;  // 校验通过
+    }
+}
+```
+
+```java
+@ExcelField(headerName = "手机号", required = true, validator = PhoneValidator.class)
+private String phone;
+```
+
+#### ⑥ 导入错误文件下载
+
+当导入数据存在校验失败时，可通过 `?errorAsFile=true` 参数让接口直接返回一个带错误原因的 Excel 文件：
+
+```bash
+curl -X POST http://localhost:8080/ground/excel/user/import?errorAsFile=true \
+  -F "file=@users.xlsx"
+```
+
+返回的 Excel 文件结构：
+- 包含原始 VO 中定义的所有列
+- 末尾自动增加 **"错误原因"** 列
+- **仅包含校验失败的行**，每行显示其原始数据 + 错误描述
+- 全部成功时仍返回 JSON 格式的 `ImportResult`
+
+#### ⑦ 配置项
+
+```yaml
+ground:
+  excel:
+    enabled: true                    # 是否启用 Excel 组件（默认 true）
+    controller-enabled: true         # 是否启用通用 Controller（默认 true）
+    scan-packages:                   # 额外扫描包路径（可选）
+      - com.example.business
 ```
 
 ### 加密工具使用
