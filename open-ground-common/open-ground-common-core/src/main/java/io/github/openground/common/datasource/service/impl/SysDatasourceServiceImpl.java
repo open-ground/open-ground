@@ -1,0 +1,222 @@
+package io.github.openground.common.datasource.service.impl;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import io.github.openground.base.exception.CommonException;
+import io.github.openground.base.utils.AESUtil;
+import io.github.openground.common.datasource.entity.SysDatasourceDO;
+import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
+import io.github.openground.common.datasource.service.SysDatasourceService;
+import io.github.openground.common.keygen.KeyGenerator;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
+
+/**
+ * 系统数据源 Service 实现
+ *
+ * <p>从 DmpDatasourceServiceImpl 迁移，密码加解密改用 open-ground AESUtil。
+ *
+ * @author open-ground
+ * @since 1.0.2
+ */
+@Slf4j
+@Service
+public class SysDatasourceServiceImpl implements SysDatasourceService {
+
+    @Autowired
+    private SysDatasourceMapper datasourceMapper;
+
+    @Value("${ground.datasource.encrypt.key:ABCDEFG123456KEY}")
+    private String encryptKey;
+
+    @Value("${ground.datasource.encrypt.iv:ABCDEFG1234567IV}")
+    private String encryptIv;
+
+    @Override
+    public SysDatasourceDO create(SysDatasourceDO ds) {
+        ds.setId(KeyGenerator.getInternalKey());
+        ds.setPassword(encrypt(ds.getPassword()));
+        ds.setDelFlag("0");
+        ds.setCreateTime(new Date());
+        ds.setUpdateTime(new Date());
+        datasourceMapper.insert(ds);
+        return ds;
+    }
+
+    @Override
+    public SysDatasourceDO update(SysDatasourceDO ds) {
+        SysDatasourceDO existing = datasourceMapper.selectById(ds.getId());
+        if (existing == null) {
+            throw new CommonException("514003", "数据源不存在");
+        }
+        if (ds.getPassword() != null && !ds.getPassword().isEmpty()) {
+            ds.setPassword(encrypt(ds.getPassword()));
+        }
+        ds.setUpdateTime(new Date());
+        datasourceMapper.updateById(ds);
+        return datasourceMapper.selectById(ds.getId());
+    }
+
+    @Override
+    public void delete(Long id) {
+        datasourceMapper.deleteById(id);
+    }
+
+    @Override
+    public SysDatasourceDO getById(Long id) {
+        return datasourceMapper.selectById(id);
+    }
+
+    @Override
+    public PageInfo<SysDatasourceDO> list(SysDatasourceDO query) {
+        int pageNum = query.getPageNum() != null ? query.getPageNum() : 1;
+        int pageSize = query.getPageSize() != null ? query.getPageSize() : 10;
+        PageHelper.startPage(pageNum, pageSize);
+        return new PageInfo<>(datasourceMapper.selectList(query));
+    }
+
+    @Override
+    public boolean testConnection(SysDatasourceDO ds) {
+        try (Connection conn = getConnection(ds)) {
+            return conn != null && conn.isValid(5);
+        } catch (Exception e) {
+            log.error("数据源连接测试异常 - dsName: {}", ds.getDsName(), e);
+            return false;
+        }
+    }
+
+    @Override
+    public Connection getConnection(SysDatasourceDO ds) {
+        try {
+            String url = resolveJdbcUrl(ds);
+            String password = decrypt(ds.getPassword());
+            String driverClass = ds.getDriverClassName();
+            if (driverClass != null && !driverClass.isEmpty()) {
+                try {
+                    Class.forName(driverClass);
+                } catch (ClassNotFoundException e) {
+                    log.warn("加载驱动类失败: {}, 尝试自动发现", driverClass);
+                }
+            }
+            Properties props = new Properties();
+            props.setProperty("user", ds.getUsername());
+            props.setProperty("password", password);
+            props.setProperty("connectTimeout", "5000");
+            props.setProperty("socketTimeout", "10000");
+            return DriverManager.getConnection(url, props);
+        } catch (Exception e) {
+            throw new CommonException("518005", "获取数据库连接失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<String> listTables(Long datasourceId) {
+        SysDatasourceDO ds = datasourceMapper.selectById(datasourceId);
+        if (ds == null) {
+            throw new CommonException("514003", "数据源不存在");
+        }
+        List<String> tables = new ArrayList<>();
+        try (Connection conn = getConnection(ds)) {
+            DatabaseMetaData meta = conn.getMetaData();
+            String catalog = resolveCatalog(conn, ds);
+            try (ResultSet rs = meta.getTables(catalog, null, "%", new String[]{"TABLE"})) {
+                while (rs.next()) {
+                    tables.add(rs.getString("TABLE_NAME"));
+                }
+            }
+        } catch (Exception e) {
+            throw new CommonException("518005", "读取表列表失败: " + e.getMessage());
+        }
+        return tables;
+    }
+
+    @Override
+    public List<Map<String, Object>> listTableColumns(Long datasourceId, String tableName) {
+        SysDatasourceDO ds = datasourceMapper.selectById(datasourceId);
+        if (ds == null) {
+            throw new CommonException("514003", "数据源不存在");
+        }
+        List<Map<String, Object>> columns = new ArrayList<>();
+        try (Connection conn = getConnection(ds)) {
+            DatabaseMetaData meta = conn.getMetaData();
+            String catalog = resolveCatalog(conn, ds);
+            try (ResultSet rs = meta.getColumns(catalog, null, tableName, "%")) {
+                while (rs.next()) {
+                    Map<String, Object> col = new LinkedHashMap<>();
+                    col.put("columnName", rs.getString("COLUMN_NAME"));
+                    col.put("typeName", rs.getString("TYPE_NAME"));
+                    col.put("columnSize", rs.getInt("COLUMN_SIZE"));
+                    col.put("decimalDigits", rs.getInt("DECIMAL_DIGITS"));
+                    col.put("nullable", rs.getInt("NULLABLE") == 1);
+                    col.put("defaultValue", rs.getString("COLUMN_DEF"));
+                    col.put("remarks", rs.getString("REMARKS"));
+                    columns.add(col);
+                }
+            }
+            // 标记主键
+            Set<String> pkSet = new HashSet<>();
+            try (ResultSet rs = meta.getPrimaryKeys(catalog, null, tableName)) {
+                while (rs.next()) {
+                    pkSet.add(rs.getString("COLUMN_NAME"));
+                }
+            }
+            for (Map<String, Object> col : columns) {
+                col.put("isPrimaryKey", pkSet.contains(col.get("columnName")));
+            }
+        } catch (Exception e) {
+            throw new CommonException("518005", "读取表字段失败: " + e.getMessage());
+        }
+        return columns;
+    }
+
+    @Override
+    public List<SysDatasourceDO> listAll() {
+        return datasourceMapper.selectList(new SysDatasourceDO());
+    }
+
+    // ====== 内部方法 ======
+
+    private String encrypt(String plainText) {
+        try {
+            return AESUtil.encrypt(encryptKey, encryptIv, plainText);
+        } catch (Exception e) {
+            throw new CommonException("518005", "密码加密失败");
+        }
+    }
+
+    private String decrypt(String encrypted) {
+        return AESUtil.decrypt(encryptKey, encryptIv, encrypted);
+    }
+
+    private String resolveJdbcUrl(SysDatasourceDO ds) {
+        if (ds.getJdbcUrl() != null && !ds.getJdbcUrl().isEmpty()) {
+            return ds.getJdbcUrl();
+        }
+        // 兼容旧数据：host/port/databaseName 拼接
+        StringBuilder sb = new StringBuilder("jdbc:");
+        sb.append(ds.getDbType() != null ? ds.getDbType() : "mysql");
+        sb.append("://").append(ds.getHost() != null ? ds.getHost() : "localhost");
+        if (ds.getPort() != null) {
+            sb.append(":").append(ds.getPort());
+        }
+        sb.append("/").append(ds.getDatabaseName() != null ? ds.getDatabaseName() : "");
+        return sb.toString();
+    }
+
+    private String resolveCatalog(Connection conn, SysDatasourceDO ds) throws SQLException {
+        String catalog = conn.getCatalog();
+        if (ds.getDatabaseName() != null && !ds.getDatabaseName().isEmpty()) {
+            catalog = ds.getDatabaseName();
+        }
+        return catalog;
+    }
+}

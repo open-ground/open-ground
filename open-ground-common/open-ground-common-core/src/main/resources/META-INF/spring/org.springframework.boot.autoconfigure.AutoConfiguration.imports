@@ -1,7 +1,10 @@
 io.github.openground.common.log.config.RequestLogAutoConfiguration
+io.github.openground.common.dbcheck.config.DbCheckCoreAutoConfiguration
 io.github.openground.common.dbcheck.config.DbCheckAutoConfiguration
+io.github.openground.common.datasource.DatasourceCoreAutoConfiguration
 io.github.openground.common.oss.OssAutoConfiguration
 io.github.openground.common.filter.config.RequestFilterAutoConfiguration
 io.github.openground.common.keygen.config.KeyGenAutoConfiguration
 io.github.openground.common.logviewer.LogViewerAutoConfiguration
 io.github.openground.common.excel.config.ExcelAutoConfiguration
+io.github.openground.common.jdbc.DynamicDataSourceAutoConfiguration

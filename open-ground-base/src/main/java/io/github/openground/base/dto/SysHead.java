@@ -35,10 +35,16 @@ public class SysHead {
   private String branchId;
 
   /**
-   * 柜员标识<br>
+   * 用户ID<br>
    */
   @Schema(description = "用户ID")
   private String userId;
+
+  /**
+   * 用户名称<br>
+   */
+  @Schema(description = "用户名称")
+  private String userName;
 
   /**
    * 传输密押<br>

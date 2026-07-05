@@ -1,6 +1,7 @@
 package io.github.openground.common.dbcheck.extractor;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -22,6 +23,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(DataSource.class)
 public class MetadataExtractor {
 
     private final DataSource dataSource;

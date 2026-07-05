@@ -62,6 +62,14 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 - **Excel 导入导出** — `GenericExcelController` 内置通用 REST 入口、`ExcelService` 核心服务、`TableQueryProvider`（MyBatis-Plus 自动查询/插入）、`ImportAnalysisListener`（EasyExcel 导入监听器），通过 `@ExcelTemplate` + `@ExcelField` 注解驱动，零代码开箱即用
 - **序列号生成** — `JdbcSequenceProvider`（基于数据库表 `SYS_AUTO_PMKEY`）、`KeyGenerator`（缓存式批量生成）、`Snowflake`（16 位雪花算法）
 - **对象存储** — `OssClient` 接口 + `S3OssClient`（AWS S3 SDK 实现），通过 `ground.oss.*` 配置
+- **多数据源管理** — 统一的多数据源组件，支持两种数据源来源：① `ground.dblist` 配置式（静态）；② `sys_datasource` 表式（动态，AES 加密存储密码）。基于 Druid 连接池，通过 `DataSourceProvider` SPI 扩展
+  - `DynamicDataSourceManager` — Druid 连接池管理器，按 `dsName` 路由，支持 `getDbType()`/`getDefaultDbType()` 数据库类型推断
+  - `DynamicJdbcTemplate` — 动态 JDBC 模板，支持参数化查询（NamedParameterJdbcTemplate）、原始 SQL 执行（`execSql`，CLOB/NCLOB 处理）、DDL 执行、存储过程调用、分页 SQL 生成、SQL 注入检测
+  - `DbDialect` SPI — 数据库方言适配器（MySQL/Oracle/PostgreSQL/DM/Tbase），提供分页 SQL、表列表 SQL、表字段 SQL、列值格式化能力，替代各项目 `IDataSourceService`
+  - `DataSourceProvider` SPI — 数据源提供者接口，`ConfigDataSourceProvider`（dblist，order=10）和 `SysDatasourceProvider`（sys_datasource 表，order=20）自动注册，高优先级覆盖低优先级
+  - `SysDatasourceController` — 系统数据源管理 REST API（CRUD + 测试连接 + 表结构查询）
+  - `DbTypeDetector` — 统一数据库类型推断（driverClassName/URL/dbType 三级推断）
+  - `SqlUtils` — 分页 SQL 生成 + SQL 注入检测
 
 ### open-ground-common-springcloud
 

@@ -1,4 +1,4 @@
-package io.github.openground.land.common.datasource;
+package io.github.openground.common.jdbc;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import lombok.Data;
@@ -7,10 +7,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Druid 连接池配置属性
- * <p>从 spring.datasource.druid 前缀读取 Druid 连接池参数，用于动态创建数据源。</p>
  *
- * @author jack.zhang
- * @since 2026-06-26
+ * <p>从 {@code spring.datasource.druid} 前缀读取 Druid 连接池参数，
+ * 用于 {@link DynamicDataSourceManager} 动态创建数据源。
+ *
+ * @author open-ground
+ * @since 1.0.2
  */
 @Component
 @ConfigurationProperties(prefix = "spring.datasource.druid")
@@ -58,6 +60,12 @@ public class DruidProperties {
 
     /**
      * 根据参数创建 Druid 数据源
+     *
+     * @param url            JDBC URL
+     * @param username       用户名
+     * @param password       密码
+     * @param driverClassName 驱动类名
+     * @return Druid 数据源（未初始化）
      */
     public DruidDataSource dataSource(String url, String username, String password, String driverClassName) {
         DruidDataSource datasource = new DruidDataSource();

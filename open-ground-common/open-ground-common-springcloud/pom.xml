@@ -13,7 +13,7 @@
     <artifactId>open-ground-common-springcloud</artifactId>
     <packaging>jar</packaging>
     <name>Open Ground Common SpringCloud</name>
-    <description>Open Ground Common SpringCloud — 基于 Feign 的操作日志 SPI 实现</description>
+    <description>Open Ground Common SpringCloud — Feign 自动配置（Auth/Filter/KeyGen/Log/LoadBalance）</description>
 
     <dependencies>
         <!-- Security API（TokenStore、SessionEntity 接口） -->

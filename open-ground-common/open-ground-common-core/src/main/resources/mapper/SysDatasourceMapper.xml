@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.common.datasource.mapper.SysDatasourceMapper">
+
+    <resultMap id="SysDatasourceResultMap" type="io.github.openground.common.datasource.entity.SysDatasourceDO">
+        <id column="id" property="id"/>
+        <result column="ds_name" property="dsName"/>
+        <result column="db_type" property="dbType"/>
+        <result column="jdbc_url" property="jdbcUrl"/>
+        <result column="driver_class_name" property="driverClassName"/>
+        <result column="host" property="host"/>
+        <result column="port" property="port"/>
+        <result column="database_name" property="databaseName"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="connect_params" property="connectParams"/>
+        <result column="remark" property="remark"/>
+        <result column="del_flag" property="delFlag"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column">
+        id, ds_name, db_type, jdbc_url, driver_class_name, host, port, database_name,
+        username, password, connect_params, app, remark, del_flag, create_by, create_time,
+        update_by, update_time
+    </sql>
+
+    <select id="selectById" resultMap="SysDatasourceResultMap">
+        SELECT <include refid="Base_Column"/>
+        FROM sys_datasource
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectList" resultMap="SysDatasourceResultMap"
+            parameterType="io.github.openground.common.datasource.entity.SysDatasourceDO">
+        SELECT <include refid="Base_Column"/>
+        FROM sys_datasource
+        <where>
+            del_flag = '0'
+            <if test="dsName != null and dsName != ''">AND ds_name LIKE CONCAT('%', #{dsName}, '%')</if>
+            <if test="dbType != null and dbType != ''">AND db_type = #{dbType}</if>
+            <if test="app != null and app != ''">AND app = #{app}</if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="io.github.openground.common.datasource.entity.SysDatasourceDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_datasource (id, ds_name, db_type, jdbc_url, driver_class_name, host, port,
+        database_name, username, password, connect_params, app, remark, del_flag, create_by, create_time)
+        VALUES (#{id}, #{dsName}, #{dbType}, #{jdbcUrl}, #{driverClassName}, #{host}, #{port},
+        #{databaseName}, #{username}, #{password}, #{connectParams}, #{app}, #{remark}, '0', #{createBy}, #{createTime})
+    </insert>
+
+    <update id="updateById" parameterType="io.github.openground.common.datasource.entity.SysDatasourceDO">
+        UPDATE sys_datasource
+        <set>
+            <if test="dsName != null">ds_name = #{dsName},</if>
+            <if test="dbType != null">db_type = #{dbType},</if>
+            <if test="jdbcUrl != null">jdbc_url = #{jdbcUrl},</if>
+            <if test="driverClassName != null">driver_class_name = #{driverClassName},</if>
+            <if test="host != null">host = #{host},</if>
+            <if test="port != null">port = #{port},</if>
+            <if test="databaseName != null">database_name = #{databaseName},</if>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="connectParams != null">connect_params = #{connectParams},</if>
+            <if test="app != null">app = #{app},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteById">
+        UPDATE sys_datasource SET del_flag = '2' WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -3,9 +3,10 @@ package io.github.openground.land.job;
 import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.util.StrUtil;
 import io.github.openground.base.utils.CommonUtil;
+import io.github.openground.common.jdbc.DynamicDataSourceManager;
+import io.github.openground.common.jdbc.DynamicJdbcTemplate;
 import io.github.openground.land.api.domain.JobOut;
 import io.github.openground.land.api.job.JobEngine;
-import io.github.openground.land.common.datasource.JdbcComponent;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
 import io.github.openground.land.mapper.TaskDispatchConfigMapper;
 import io.github.openground.land.mapper.TaskDispatchExeLogMapper;
@@ -47,7 +48,10 @@ public class BatchProcedurelTask extends JobEngine {
     protected AsyncTaskExecutor stepExecutor;
 
     @Autowired
-    private JdbcComponent jdbcComponent;
+    private DynamicJdbcTemplate dynamicJdbcTemplate;
+
+    @Autowired
+    private DynamicDataSourceManager dynamicDataSourceManager;
 
     @Override
     public JobOut execute(Map<String, Object> param) throws Exception {
@@ -132,9 +136,9 @@ public class BatchProcedurelTask extends JobEngine {
             try {
                 if (param.containsKey("dsName")) {
                     String dsName = CommonUtil.getStringValueFromHashMap(param, "dsName");
-                    String dbType = jdbcComponent.getDbType(dsName);
-                    String sql = JdbcComponent.getProcSql(dbType, procName, eodDate);
-                    Map<String, Object> result = jdbcComponent.execProcdureSql(dsName, sql);
+                    String dbType = dynamicDataSourceManager.getDbType(dsName);
+                    String sql = DynamicJdbcTemplate.getProcSql(dbType, procName, eodDate);
+                    Map<String, Object> result = dynamicJdbcTemplate.execProcedure(dsName, sql);
                     retCode = (String) result.get("retCode");
                     retMsg = (String) result.get("retMsg");
                 } else {
@@ -154,7 +158,7 @@ public class BatchProcedurelTask extends JobEngine {
             } catch (Exception e) {
                 log.error("存储过程[{}]执行失败", procName, e);
                 out.put("success", false);
-                String message = JdbcComponent.getMessage(ExceptionUtil.stacktraceToString(e), procName);
+                String message = DynamicJdbcTemplate.getMessage(ExceptionUtil.stacktraceToString(e), procName);
                 out.put("message", "存储过程[" + procName + "]执行失败:" + message + "\n" + ExceptionUtil.stacktraceToString(e, 1500));
             }
             out.put("exeStatus", (boolean) out.get("success") ? "S" : "F");

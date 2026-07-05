@@ -2,3 +2,4 @@ io.github.openground.cloud.auth.config.FeignTokenStoreAutoConfiguration
 io.github.openground.cloud.filter.config.FeignRequestFilterAutoConfiguration
 io.github.openground.cloud.keygen.config.FeignKeyGenAutoConfiguration
 io.github.openground.cloud.log.config.FeignLogAutoConfiguration
+io.github.openground.cloud.loadbalance.LocalFirstLoadBalancerNacosAutoConfiguration

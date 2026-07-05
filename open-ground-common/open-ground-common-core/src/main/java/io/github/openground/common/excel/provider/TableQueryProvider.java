@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.toolkit.ReflectionKit;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import io.github.openground.common.excel.spi.ExcelQueryProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(JdbcTemplate.class)
 public class TableQueryProvider implements ExcelQueryProvider {
 
     private final JdbcTemplate jdbcTemplate;

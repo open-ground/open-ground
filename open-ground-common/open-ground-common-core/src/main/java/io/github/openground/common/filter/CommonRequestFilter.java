@@ -145,7 +145,7 @@ public class CommonRequestFilter implements Filter {
     protected boolean isWhiteList(HttpServletRequest request) {
         // 检查配置白名单
         if (whiteList != null) {
-            String uri = request.getRequestURI();
+            String uri = request.getServletPath();
             for (String pattern : whiteList) {
                 if (pathMatcher.match(pattern, uri)) {
                     log.debug("白名单放行: {} 匹配模式 {}", uri, pattern);

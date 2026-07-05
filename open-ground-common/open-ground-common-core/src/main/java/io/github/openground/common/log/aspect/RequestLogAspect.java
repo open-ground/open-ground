@@ -105,7 +105,7 @@ public class RequestLogAspect {
         }
 
         HttpServletRequest request = attributes.getRequest();
-        String uri = request.getRequestURI();
+        String uri = request.getServletPath();
 
         // 检查包路径限制（若配置了 scanPackages）
         if (properties != null && properties.hasScanPackages()) {

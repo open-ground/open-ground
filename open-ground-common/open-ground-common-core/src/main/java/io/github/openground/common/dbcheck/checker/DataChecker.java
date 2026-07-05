@@ -4,6 +4,7 @@ import io.github.openground.common.dbcheck.util.DbCheckUtils;
 import io.github.openground.common.dbcheck.extractor.MetadataExtractor;
 import io.github.openground.common.dbcheck.extractor.SimpleSqlParser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(DataSource.class)
 public class DataChecker {
 
     private final DataSource dataSource;
