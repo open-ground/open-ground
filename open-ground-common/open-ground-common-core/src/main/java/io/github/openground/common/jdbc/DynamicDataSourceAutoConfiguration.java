@@ -2,7 +2,9 @@ package io.github.openground.common.jdbc;
 
 import io.github.openground.common.jdbc.dialect.DbDialectRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -84,10 +86,23 @@ public class DynamicDataSourceAutoConfiguration {
             DruidProperties druidProperties,
             List<DataSource> dataSources) {
         DataSource primary = dataSources.isEmpty() ? null : dataSources.get(0);
-        log.info("动态数据源管理器已启用（Druid 连接池），共 {} 个动态数据源，主数据源: {}",
+        log.info("动态数据源管理器已启用（Druid 连接池），共 {} 个动态数据源: {}",
                 registry.getDataSourceNames().size(),
-                primary != null ? primary : "无");
+                registry.getDataSourceNames().isEmpty() ? "无" : registry.getDataSourceNames());
         return new DynamicDataSourceManager(registry, druidProperties, primary);
+    }
+
+    /**
+     * 动态数据源 SqlSessionFactory 管理器（复用主 SqlSessionFactory 配置）
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(SqlSessionFactory.class)
+    public DynamicSqlSessionFactoryManager dynamicSqlSessionFactoryManager(
+            DynamicDataSourceManager dataSourceManager,
+            SqlSessionFactory primarySqlSessionFactory) {
+        log.info("动态数据源 SqlSessionFactory 管理器已启用（复用主 SqlSessionFactory 配置）");
+        return new DynamicSqlSessionFactoryManager(dataSourceManager, primarySqlSessionFactory);
     }
 
     /**
@@ -97,8 +112,10 @@ public class DynamicDataSourceAutoConfiguration {
     @ConditionalOnMissingBean
     public DynamicJdbcTemplate dynamicJdbcTemplate(
             DynamicDataSourceManager dataSourceManager,
-            DbDialectRegistry dbDialectRegistry) {
-        log.info("动态 JDBC 模板已启用（参数化查询 + 原始SQL + 分页 + 注入检测 + 存储过程 + 方言适配）");
-        return new DynamicJdbcTemplate(dataSourceManager, dbDialectRegistry);
+            DbDialectRegistry dbDialectRegistry,
+            org.springframework.beans.factory.ObjectProvider<DynamicSqlSessionFactoryManager> factoryManagerProvider) {
+        DynamicSqlSessionFactoryManager factoryManager = factoryManagerProvider.getIfAvailable();
+        log.info("动态 JDBC 模板已启用（参数化查询 + 原始SQL + 分页 + 注入检测 + 存储过程 + 方言适配 + MyBatis多数据源）");
+        return new DynamicJdbcTemplate(dataSourceManager, dbDialectRegistry, factoryManager);
     }
 }

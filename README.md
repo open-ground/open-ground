@@ -62,14 +62,169 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 - **Excel 导入导出** — `GenericExcelController` 内置通用 REST 入口、`ExcelService` 核心服务、`TableQueryProvider`（MyBatis-Plus 自动查询/插入）、`ImportAnalysisListener`（EasyExcel 导入监听器），通过 `@ExcelTemplate` + `@ExcelField` 注解驱动，零代码开箱即用
 - **序列号生成** — `JdbcSequenceProvider`（基于数据库表 `SYS_AUTO_PMKEY`）、`KeyGenerator`（缓存式批量生成）、`Snowflake`（16 位雪花算法）
 - **对象存储** — `OssClient` 接口 + `S3OssClient`（AWS S3 SDK 实现），通过 `ground.oss.*` 配置
-- **多数据源管理** — 统一的多数据源组件，支持两种数据源来源：① `ground.dblist` 配置式（静态）；② `sys_datasource` 表式（动态，AES 加密存储密码）。基于 Druid 连接池，通过 `DataSourceProvider` SPI 扩展
-  - `DynamicDataSourceManager` — Druid 连接池管理器，按 `dsName` 路由，支持 `getDbType()`/`getDefaultDbType()` 数据库类型推断
-  - `DynamicJdbcTemplate` — 动态 JDBC 模板，支持参数化查询（NamedParameterJdbcTemplate）、原始 SQL 执行（`execSql`，CLOB/NCLOB 处理）、DDL 执行、存储过程调用、分页 SQL 生成、SQL 注入检测
-  - `DbDialect` SPI — 数据库方言适配器（MySQL/Oracle/PostgreSQL/DM/Tbase），提供分页 SQL、表列表 SQL、表字段 SQL、列值格式化能力，替代各项目 `IDataSourceService`
-  - `DataSourceProvider` SPI — 数据源提供者接口，`ConfigDataSourceProvider`（dblist，order=10）和 `SysDatasourceProvider`（sys_datasource 表，order=20）自动注册，高优先级覆盖低优先级
-  - `SysDatasourceController` — 系统数据源管理 REST API（CRUD + 测试连接 + 表结构查询）
-  - `DbTypeDetector` — 统一数据库类型推断（driverClassName/URL/dbType 三级推断）
-  - `SqlUtils` — 分页 SQL 生成 + SQL 注入检测
+- **多数据源管理** — 统一的多数据源组件，支持两种数据源来源：① `ground.dblist` 配置式（静态）；② `sys_datasource` 表式（动态，AES 加密存储密码）。基于 Druid 连接池，通过 `DataSourceProvider` SPI 扩展。支持 JDBC 原始 SQL 执行和 MyBatis 动态多数据源操作。
+
+  <details>
+  <summary>📖 详细使用说明</summary>
+
+  #### 数据源配置
+
+  **方式一：dblist 配置式（静态，启动时加载）**
+
+  ```yaml
+  ground:
+    dblist:
+      - dsName: master
+        dbName: auth_db
+        app: auth              # 可选，应用标识
+        url: jdbc:mysql://localhost:3306/auth_db
+        username: root
+        password: 123456
+        driverClassName: com.mysql.cj.jdbc.Driver
+        dbType: mysql           # 可选，不配则自动推断
+  ```
+
+  **方式二：sys_datasource 表（动态，按需加载）**
+
+  通过 `/sys/datasource/create` REST API 或直接 INSERT 到 `sys_datasource` 表配置。密码使用 AES 加密存储，密钥通过 `ground.datasource.encrypt.key` / `ground.datasource.encrypt.iv` 配置（默认值与 DMP 兼容）。
+
+  ```yaml
+  ground:
+    datasource:
+      encrypt:
+        key: ABCDEFG123456KEY
+        iv: ABCDEFG1234567IV
+  ```
+
+  **优先级：** sys_datasource 表(order=20) > dblist 配置(order=10)，同名 dsName 表配置覆盖配置文件。
+
+  #### 查找机制（懒加载）
+
+  1. **启动时** — 只加载 dblist 配置式数据源（读配置文件，不查库）
+  2. **首次访问 dsName 缓存未命中时** — 遍历 sys_datasource Provider 查库，结果缓存
+  3. **连接池创建** — 调用 `getDataSource(dsName)` 时按需创建 Druid 连接池（`computeIfAbsent`）
+  4. **无 dsName 时** — 兜底使用 Spring Boot 主数据源（`spring.datasource`）
+
+  #### JDBC 操作（DynamicJdbcTemplate）
+
+  ```java
+  @Autowired
+  private DynamicJdbcTemplate dynamicJdbcTemplate;
+
+  // 原始 SQL 执行（兼容老代码，支持 CLOB/NCLOB）
+  List<Map<String, Object>> result = dynamicJdbcTemplate.execSql(
+      "master", "SELECT * FROM user WHERE id = 1", OperationType.SELECT);
+
+  // 参数化查询（NamedParameterJdbcTemplate，推荐）
+  Map<String, Object> params = Map.of("name", "张三");
+  List<Map<String, Object>> users = dynamicJdbcTemplate.queryForList(
+      "master", "SELECT * FROM user WHERE name = :name", params);
+
+  // 无 dsName（使用默认数据源，兜底 Spring 主数据源）
+  List<Map<String, Object>> list = dynamicJdbcTemplate.queryForList(
+      "SELECT * FROM config", params);
+
+  // DDL 执行
+  dynamicJdbcTemplate.executeDdl("master", "CREATE TABLE test (id INT)");
+
+  // 存储过程调用
+  String sql = DynamicJdbcTemplate.getProcSql("mysql", "my_proc", "20260101");
+  Map<String, Object> result = dynamicJdbcTemplate.execProcedure("master", sql);
+
+  // 分页 SQL 生成
+  String pageSql = dynamicJdbcTemplate.handlePageSql("master", baseSql, 1, 20);
+
+  // SQL 注入检测
+  boolean inject = dynamicJdbcTemplate.checkSqlInject(sqlStr);
+  ```
+
+  #### MyBatis 动态多数据源（DynamicJdbcTemplate）
+
+  在指定数据源上执行 MyBatis Mapper 操作，复用主 SqlSessionFactory 配置（Mapper XML、类型别名、插件），仅替换 DataSource。
+
+  ```java
+  // 方式1：Mapper 回调（推荐，类型安全，最简洁）
+  User user = dynamicJdbcTemplate.executeWithMapper("business_db",
+      UserMapper.class, mapper -> mapper.selectById(123));
+
+  // 方式2：Lambda 回调（最灵活）
+  List<User> users = dynamicJdbcTemplate.executeInDataSource("business_db",
+      session -> {
+          UserMapper mapper = session.getMapper(UserMapper.class);
+          return mapper.selectByCompany("ACME");
+      });
+
+  // 方式3：Statement ID（最简单）
+  List<Map<String, Object>> list = dynamicJdbcTemplate.selectListInDataSource(
+      "report_db", "com.example.mapper.ReportMapper.selectStats", params);
+
+  // 方式4：带事务（异常自动回滚，正常自动提交）
+  dynamicJdbcTemplate.executeInDataSourceTransactional("business_db",
+      session -> {
+          session.update("com.example.mapper.UserMapper.insert", user);
+          session.update("com.example.mapper.LogMapper.insert", log);
+          return null;
+      });
+
+  // 方式5：获取 Mapper 代理
+  UserMapper mapper = dynamicJdbcTemplate.getMapperInDataSource("db1", UserMapper.class);
+  ```
+
+  #### 数据库方言（DbDialect SPI）
+
+  内置 5 种方言实现，通过 `DbDialectRegistry` 按 dbType 自动路由：
+
+  | 方言 | dbType | 分页SQL | 表列表SQL | 表字段SQL | 列值格式化 |
+  |------|--------|---------|----------|----------|-----------|
+  | MySqlDialect | mysql | LIMIT offset, limit | information_schema | information_schema | 字符加引号 |
+  | OracleDialect | oracle | ROWNUM | ALL_TAB_COMMENTS | ALL_TAB_COLUMNS | 日期 TO_DATE |
+  | DmDialect | dm | ROWNUM | ALL_TAB_COMMENTS | ALL_TAB_COLUMNS | 字符加引号 |
+  | PostgreSqlDialect | postgresql | LIMIT/OFFSET | pg_class | pg_attribute | 字符加引号 |
+  | TbaseDialect | gaussdb | LIMIT/OFFSET | pg_class | pg_attribute | 字符加引号 |
+
+  #### 系统数据源管理 REST API
+
+  | 接口 | 方法 | 说明 |
+  |------|------|------|
+  | `/sys/datasource/create` | POST | 创建数据源（密码 AES 加密） |
+  | `/sys/datasource/update` | POST | 更新数据源 |
+  | `/sys/datasource/delete/{id}` | POST | 删除数据源（逻辑删除） |
+  | `/sys/datasource/{id}` | GET | 查询数据源详情 |
+  | `/sys/datasource/list` | POST | 分页查询数据源列表 |
+  | `/sys/datasource/testConnection` | POST | 测试数据源连接 |
+  | `/sys/datasource/{id}/tables` | GET | 查询数据源表列表 |
+  | `/sys/datasource/{id}/tables/{tableName}/columns` | GET | 查询表字段列表 |
+  | `/sys/datasource/db-types` | GET | 获取支持的数据库类型列表 |
+
+  #### 自定义 DataSourceProvider 扩展
+
+  ```java
+  @Component
+  public class MyCustomProvider implements DataSourceProvider {
+      @Override
+      public List<DataSourceDescriptor> listDataSources() {
+          // 从自定义来源读取数据源信息
+          return List.of(DataSourceDescriptor.builder()
+                  .dsName("custom_db")
+                  .url("jdbc:mysql://...")
+                  .username("root")
+                  .password("123456")
+                  .dbType("mysql")
+                  .source("custom")
+                  .build());
+      }
+      @Override
+      public int getOrder() { return 30; }  // 优先级高于 sys_datasource(20)
+  }
+  ```
+
+  #### 与其他数据源共存
+
+  多数据源组件与以下数据源完全隔离，互不影响：
+  - **Spring Boot 主数据源**（`spring.datasource`）— 通过 `@Primary` 自动装配，无 dsName 时兜底
+  - **land 框架数据源**（`ground.land.datasource`）— `LandDataSourceConfig` 独立创建，不走 DynamicDataSourceManager
+
+  </details>
 
 ### open-ground-common-springcloud
 

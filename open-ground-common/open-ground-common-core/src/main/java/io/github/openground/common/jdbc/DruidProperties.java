@@ -59,7 +59,7 @@ public class DruidProperties {
     private String validationQuery;
 
     /**
-     * 根据参数创建 Druid 数据源
+     * 根据全局参数创建 Druid 数据源
      *
      * @param url            JDBC URL
      * @param username       用户名
@@ -68,15 +68,34 @@ public class DruidProperties {
      * @return Druid 数据源（未初始化）
      */
     public DruidDataSource dataSource(String url, String username, String password, String driverClassName) {
+        return dataSource(url, username, password, driverClassName, null, null, null, null);
+    }
+
+    /**
+     * 根据参数创建 Druid 数据源（支持 per-datasource 连接池参数覆盖）
+     *
+     * @param url            JDBC URL
+     * @param username       用户名
+     * @param password       密码
+     * @param driverClassName 驱动类名
+     * @param overrideInitialSize  覆盖 initialSize（null 则用全局值）
+     * @param overrideMaxActive    覆盖 maxActive（null 则用全局值）
+     * @param overrideMinIdle      覆盖 minIdle（null 则用全局值）
+     * @param overrideMaxWait      覆盖 maxWait（null 则用全局值）
+     * @return Druid 数据源（未初始化）
+     */
+    public DruidDataSource dataSource(String url, String username, String password, String driverClassName,
+                                      Integer overrideInitialSize, Integer overrideMaxActive,
+                                      Integer overrideMinIdle, Long overrideMaxWait) {
         DruidDataSource datasource = new DruidDataSource();
         datasource.setUrl(url);
         datasource.setUsername(username);
         datasource.setPassword(password);
         datasource.setDriverClassName(driverClassName);
-        datasource.setInitialSize(initialSize);
-        datasource.setMinIdle(minIdle);
-        datasource.setMaxActive(maxActive);
-        datasource.setMaxWait(maxWait);
+        datasource.setInitialSize(overrideInitialSize != null ? overrideInitialSize : initialSize);
+        datasource.setMinIdle(overrideMinIdle != null ? overrideMinIdle : minIdle);
+        datasource.setMaxActive(overrideMaxActive != null ? overrideMaxActive : maxActive);
+        datasource.setMaxWait(overrideMaxWait != null ? overrideMaxWait : maxWait);
         datasource.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
         datasource.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
         datasource.setTestWhileIdle(testWhileIdle);

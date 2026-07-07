@@ -186,6 +186,9 @@ public class DynamicDataSourceManager {
 
     /**
      * 创建 Druid 连接池
+     * <p>
+     * 支持从 DataSourceDescriptor.rawEntity 中提取 per-datasource 的连接池参数，
+     * 未配置则用全局 spring.datasource.druid.* 默认值。
      */
     private DruidDataSource createDataSource(String dsName) {
         DataSourceDescriptor desc = registry.getDescriptor(dsName);
@@ -196,8 +199,21 @@ public class DynamicDataSourceManager {
         if (!StringUtils.hasText(driverClassName)) {
             driverClassName = inferDriverClassName(desc.getDbType(), desc.getUrl());
         }
+        // 提取 per-datasource 连接池参数（如果 rawEntity 中有）
+        Integer overrideInitialSize = null;
+        Integer overrideMaxActive = null;
+        Integer overrideMinIdle = null;
+        Long overrideMaxWait = null;
+        Object raw = desc.getRawEntity();
+        if (raw instanceof DynamicDataSourceProperties.DataSourceEntry entry) {
+            overrideInitialSize = entry.getInitialSize() != 5 ? entry.getInitialSize() : null;
+            overrideMaxActive = entry.getMaxActive() != 20 ? entry.getMaxActive() : null;
+            overrideMinIdle = entry.getMinIdle() != 5 ? entry.getMinIdle() : null;
+            overrideMaxWait = entry.getMaxWait() != 30000 ? entry.getMaxWait() : null;
+        }
         DruidDataSource ds = druidProperties.dataSource(desc.getUrl(), desc.getUsername(),
-                desc.getPassword(), driverClassName);
+                desc.getPassword(), driverClassName,
+                overrideInitialSize, overrideMaxActive, overrideMinIdle, overrideMaxWait);
         log.info("动态数据源 [{}] Druid 连接池已创建: url={}, source={}", dsName, desc.getUrl(), desc.getSource());
         return ds;
     }

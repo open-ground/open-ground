@@ -4,6 +4,8 @@ import com.alibaba.druid.pool.DruidDataSource;
 import io.github.openground.common.jdbc.dialect.DbDialect;
 import io.github.openground.common.jdbc.dialect.DbDialectRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
@@ -11,6 +13,7 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * 动态 JDBC 模板 — 安全的参数化查询组件
@@ -41,6 +44,7 @@ public class DynamicJdbcTemplate {
 
     private final DynamicDataSourceManager dataSourceManager;
     private final DbDialectRegistry dbDialectRegistry;
+    private final DynamicSqlSessionFactoryManager sqlSessionFactoryManager;
 
     /**
      * 操作类型枚举（兼容 PubJdbcComponent.OperationType）
@@ -52,6 +56,17 @@ public class DynamicJdbcTemplate {
     public DynamicJdbcTemplate(DynamicDataSourceManager dataSourceManager, DbDialectRegistry dbDialectRegistry) {
         this.dataSourceManager = dataSourceManager;
         this.dbDialectRegistry = dbDialectRegistry;
+        this.sqlSessionFactoryManager = null;
+    }
+
+    /**
+     * 带动态 SqlSessionFactory 管理器的构造函数
+     */
+    public DynamicJdbcTemplate(DynamicDataSourceManager dataSourceManager, DbDialectRegistry dbDialectRegistry,
+                                DynamicSqlSessionFactoryManager sqlSessionFactoryManager) {
+        this.dataSourceManager = dataSourceManager;
+        this.dbDialectRegistry = dbDialectRegistry;
+        this.sqlSessionFactoryManager = sqlSessionFactoryManager;
     }
 
     /**
@@ -623,6 +638,151 @@ public class DynamicJdbcTemplate {
             }
         }
         return result.toString();
+    }
+
+    // ========== MyBatis 动态多数据源方法 ==========
+
+    // 无返回值时直接用 executeInDataSource(dsName, session -> { ...; return null; })
+
+    /**
+     * 在指定数据源上执行 MyBatis 操作（Lambda 回调，有返回值）
+     *
+     * <p>使用自动提交模式，适合查询操作。需要事务时使用
+     * {@link #executeInDataSourceTransactional}。
+     *
+     * @param dsName 数据源名称
+     * @param action SqlSession 回调
+     * @param <T>    返回类型
+     * @return 执行结果
+     */
+    public <T> T executeInDataSource(String dsName, SqlSessionCallback<T> action) {
+        SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        try (SqlSession session = factory.openSession(true)) {
+            return action.doInSqlSession(session);
+        }
+    }
+
+    // 解决 void 版本和泛型版本的方法签名冲突：删除重复的 void 版本
+    // 无返回值时直接用 executeInDataSource(dsName, session -> { ...; return null; })
+
+    /**
+     * 在指定数据源上执行带事务的 MyBatis 操作
+     *
+     * <p>关闭自动提交，异常时自动回滚，正常时自动提交。
+     *
+     * @param dsName 数据源名称
+     * @param action SqlSession 回调
+     * @param <T>    返回类型
+     * @return 执行结果
+     */
+    public <T> T executeInDataSourceTransactional(String dsName, SqlSessionCallback<T> action) {
+        SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        SqlSession session = factory.openSession(false);
+        try {
+            T result = action.doInSqlSession(session);
+            session.commit();
+            return result;
+        } catch (Exception e) {
+            session.rollback();
+            throw e;
+        } finally {
+            session.close();
+        }
+    }
+
+    /**
+     * 在指定数据源上执行 Mapper 操作（Lambda 回调，类型安全）
+     *
+     * <p>推荐用法：调用方无需了解 SqlSession API，直接使用 Mapper 代理。
+     *
+     * <pre>
+     * User user = tpl.executeWithMapper("business_db", UserMapper.class,
+     *     mapper -> mapper.selectById(123));
+     * </pre>
+     *
+     * @param dsName      数据源名称
+     * @param mapperClass Mapper 接口类
+     * @param callback    Mapper 回调
+     * @param <M>         Mapper 类型
+     * @param <T>         返回类型
+     * @return 执行结果
+     */
+    public <M, T> T executeWithMapper(String dsName, Class<M> mapperClass, MapperCallback<M, T> callback) {
+        return executeInDataSource(dsName, session -> {
+            M mapper = session.getMapper(mapperClass);
+            return callback.doWithMapper(mapper);
+        });
+    }
+
+    /**
+     * 在指定数据源上获取 Mapper 代理
+     *
+     * <p>注意：返回的 Mapper 代理绑定到一个已关闭的 SqlSession，
+     * 仅适用于 MyBatis 的 Mapper 代理机制（延迟执行）。
+     * 建议优先使用 {@link #executeWithMapper}。
+     *
+     * @param dsName      数据源名称
+     * @param mapperClass Mapper 接口类
+     * @param <M>         Mapper 类型
+     * @return Mapper 代理
+     */
+    public <M> M getMapperInDataSource(String dsName, Class<M> mapperClass) {
+        SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        SqlSession session = factory.openSession(true);
+        try {
+            return session.getMapper(mapperClass);
+        } finally {
+            session.close();
+        }
+    }
+
+    /**
+     * 在指定数据源上查询列表（statement ID）
+     *
+     * @param dsName       数据源名称
+     * @param statementId  MyBatis statement ID（namespace.methodName）
+     * @param params       参数
+     * @param <T>          返回类型
+     * @return 查询结果列表
+     */
+    public <T> List<T> selectListInDataSource(String dsName, String statementId, Object params) {
+        return executeInDataSource(dsName, session -> session.selectList(statementId, params));
+    }
+
+    /**
+     * 在指定数据源上查询单条（statement ID）
+     *
+     * @param dsName       数据源名称
+     * @param statementId  MyBatis statement ID（namespace.methodName）
+     * @param params       参数
+     * @param <T>          返回类型
+     * @return 查询结果
+     */
+    public <T> T selectOneInDataSource(String dsName, String statementId, Object params) {
+        return executeInDataSource(dsName, session -> session.selectOne(statementId, params));
+    }
+
+    /**
+     * 在指定数据源上插入/更新/删除（statement ID）
+     *
+     * @param dsName       数据源名称
+     * @param statementId  MyBatis statement ID（namespace.methodName）
+     * @param params       参数
+     * @return 影响行数
+     */
+    public int updateInDataSource(String dsName, String statementId, Object params) {
+        return executeInDataSource(dsName, session -> session.update(statementId, params));
+    }
+
+    /**
+     * 获取动态数据源的 SqlSessionFactory
+     */
+    private SqlSessionFactory getSqlSessionFactory(String dsName) {
+        if (sqlSessionFactoryManager == null) {
+            throw new IllegalStateException("DynamicSqlSessionFactoryManager 未注入，"
+                    + "请在 DynamicDataSourceAutoConfiguration 中配置");
+        }
+        return sqlSessionFactoryManager.getSqlSessionFactory(dsName);
     }
 
     /**
