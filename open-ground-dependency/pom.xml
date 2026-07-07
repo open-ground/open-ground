@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <revision>1.0.1</revision>
+        <revision>1.0.2-SNAPSHOT</revision>
         <spring-boot.version>3.4.4</spring-boot.version>
         <lombok.version>1.18.38</lombok.version>
         <slf4j-api.version>2.0.16</slf4j-api.version>
@@ -460,6 +460,34 @@
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${maven-dependency-plugin.version}</version>
                 </plugin>
+
+                <!-- Maven GPG Plugin（发布 Maven Central 时签名，通过 release profile 激活） -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.7</version>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Central Publishing Plugin（发布 Maven Central 时上传，通过 release profile 激活） -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.9.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <tokenAuth>true</tokenAuth>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -476,30 +504,26 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.9.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.2.7</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
+
+    <!-- 发布到 Maven Central 时通过 -Prelease 激活 GPG 签名与 Central 上传，
+         避免被 ground-auth 等继承者无条件继承而影响其 deploy 到私服 -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
