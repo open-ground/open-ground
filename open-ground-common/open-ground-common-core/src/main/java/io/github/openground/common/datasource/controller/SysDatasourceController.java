@@ -5,6 +5,7 @@ import io.github.openground.base.dto.CommonResult;
 import io.github.openground.common.datasource.entity.DbTypeVO;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.service.SysDatasourceService;
+import io.github.openground.common.jdbc.DynamicDataSourceManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +30,9 @@ public class SysDatasourceController {
 
     @Autowired
     private SysDatasourceService datasourceService;
+
+    @Autowired(required = false)
+    private DynamicDataSourceManager dynamicDataSourceManager;
 
     @Operation(summary = "创建数据源")
     @PostMapping("/create")
@@ -84,5 +88,26 @@ public class SysDatasourceController {
     @GetMapping("/db-types")
     public CommonResult<List<DbTypeVO>> listDbTypes() {
         return CommonResult.success(DbTypeVO.allTypes());
+    }
+
+    /**
+     * 刷新数据源缓存
+     *
+     * <p>重新从所有 Provider（含 sys_datasource 表）加载数据源描述符到缓存，
+     * 并关闭不再存在的连接池。修改数据源后调用此接口生效。
+     *
+     * @return 刷新结果
+     */
+    @Operation(summary = "刷新数据源缓存")
+    @PostMapping("/refresh")
+    public CommonResult<Map<String, Object>> refresh() {
+        if (dynamicDataSourceManager == null) {
+            return CommonResult.error("500", "动态数据源管理器未启用");
+        }
+        dynamicDataSourceManager.refresh();
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("datasourceCount", dynamicDataSourceManager.getDataSourceList().size());
+        result.put("datasourceNames", dynamicDataSourceManager.getDataSourceNames());
+        return CommonResult.success(result);
     }
 }

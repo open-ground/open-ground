@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.List;
 @Slf4j
 @AutoConfiguration
 @EnableConfigurationProperties({DynamicDataSourceProperties.class, DruidProperties.class})
+@ComponentScan(basePackages = "io.github.openground.common.jdbc.dialect")
 public class DynamicDataSourceAutoConfiguration {
 
     /**

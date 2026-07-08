@@ -23,6 +23,9 @@ public class DataSourceProviderRegistry {
      */
     private final Map<String, DataSourceDescriptor> descriptorMap = new ConcurrentHashMap<>();
 
+    /** 是否已全量加载所有 Provider 的数据源（含查库的 Provider） */
+    private volatile boolean allLoaded = false;
+
     public DataSourceProviderRegistry(List<DataSourceProvider> providers) {
         this.providers = providers != null ? providers : Collections.emptyList();
         // 只加载不查库的 Provider（如 ConfigDataSourceProvider）
@@ -87,6 +90,7 @@ public class DataSourceProviderRegistry {
                 });
         descriptorMap.clear();
         descriptorMap.putAll(newMap);
+        allLoaded = true;
         log.info("数据源注册中心刷新完成，共 {} 个数据源: {}", descriptorMap.size(), descriptorMap.keySet());
     }
 
@@ -141,9 +145,21 @@ public class DataSourceProviderRegistry {
     /**
      * 获取所有数据源描述符
      *
+     * <p>首次调用时触发全量加载（调用所有 Provider 的 listDataSources），
+     * 将所有数据源描述符加载到缓存。后续调用直接返回缓存。
+     * 启动时不查库，避免影响启动速度。
+     *
      * @return 不可变的数据源描述符集合
      */
     public Collection<DataSourceDescriptor> getAllDescriptors() {
+        if (!allLoaded) {
+            synchronized (this) {
+                if (!allLoaded) {
+                    refresh();
+                    allLoaded = true;
+                }
+            }
+        }
         return Collections.unmodifiableCollection(descriptorMap.values());
     }
 

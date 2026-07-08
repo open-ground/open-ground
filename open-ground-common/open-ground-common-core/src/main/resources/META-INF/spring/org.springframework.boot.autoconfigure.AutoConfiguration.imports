@@ -8,3 +8,4 @@ io.github.openground.common.keygen.config.KeyGenAutoConfiguration
 io.github.openground.common.logviewer.LogViewerAutoConfiguration
 io.github.openground.common.excel.config.ExcelAutoConfiguration
 io.github.openground.common.jdbc.DynamicDataSourceAutoConfiguration
+io.github.openground.common.dataquery.config.DataQueryAutoConfiguration

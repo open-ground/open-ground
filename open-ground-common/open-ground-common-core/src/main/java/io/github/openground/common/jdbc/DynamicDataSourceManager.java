@@ -167,21 +167,58 @@ public class DynamicDataSourceManager {
     /**
      * 刷新数据源缓存
      *
-     * <p>重新从 Provider 收集数据源信息，关闭旧连接池，按需创建新连接池。
+     * <p>重新从 Provider 收集数据源信息，关闭不再存在的连接池，
+     * 对连接信息发生变化的数据源关闭旧连接池（下次访问时自动重建）。
      */
     public synchronized void refresh() {
         registry.refresh();
-        // 关闭不再存在的连接池
         Set<String> currentNames = registry.getDataSourceNames();
         for (String name : new HashSet<>(dataSourceMap.keySet())) {
             if (!currentNames.contains(name)) {
+                // 数据源已删除，关闭连接池
                 DruidDataSource ds = dataSourceMap.remove(name);
                 if (ds != null) {
                     ds.close();
                     log.info("数据源 [{}] 连接池已关闭（不再存在）", name);
                 }
+            } else {
+                // 数据源仍存在，检查连接信息是否变化
+                DataSourceDescriptor desc = registry.getDescriptor(name);
+                DruidDataSource existing = dataSourceMap.get(name);
+                if (desc != null && existing != null && isDataSourceChanged(desc, existing)) {
+                    dataSourceMap.remove(name);
+                    existing.close();
+                    log.info("数据源 [{}] 连接信息已变更，旧连接池已关闭（下次访问时重建）", name);
+                }
             }
         }
+    }
+
+    /**
+     * 判断数据源描述符与现有连接池的连接信息是否不一致
+     *
+     * @param desc      最新的数据源描述符
+     * @param existing  当前连接池
+     * @return true 表示连接信息已变化，需要重建
+     */
+    private boolean isDataSourceChanged(DataSourceDescriptor desc, DruidDataSource existing) {
+        if (desc.getUrl() != null && !desc.getUrl().equals(existing.getUrl())) {
+            return true;
+        }
+        if (desc.getUsername() != null && !desc.getUsername().equals(existing.getUsername())) {
+            return true;
+        }
+        if (desc.getDriverClassName() != null) {
+            String existingDriver = existing.getDriverClassName();
+            if (!desc.getDriverClassName().equals(existingDriver)) {
+                return true;
+            }
+        }
+        // 密码变化无法直接比较（连接池中密码已加密），用描述符密码非空即认为可能变化
+        if (desc.getPassword() != null && !desc.getPassword().isEmpty()) {
+            return true;
+        }
+        return false;
     }
 
     /**

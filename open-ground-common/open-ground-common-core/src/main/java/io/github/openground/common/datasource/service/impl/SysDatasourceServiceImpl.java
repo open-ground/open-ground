@@ -60,6 +60,9 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
         }
         if (ds.getPassword() != null && !ds.getPassword().isEmpty()) {
             ds.setPassword(encrypt(ds.getPassword()));
+        } else {
+            // 密码为空时不更新，避免覆盖原密码
+            ds.setPassword(null);
         }
         ds.setUpdateTime(new Date());
         datasourceMapper.updateById(ds);
