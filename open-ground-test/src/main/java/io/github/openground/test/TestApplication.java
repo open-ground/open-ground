@@ -11,9 +11,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author open-ground
  */
 @SpringBootApplication
-
 public class TestApplication {
     public static void main(String[] args) {
+        System.setProperty("nacos.logging.default.config.enabled", "false");
         SpringApplication.run(TestApplication.class, args);
     }
 }

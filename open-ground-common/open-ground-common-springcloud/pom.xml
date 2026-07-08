@@ -47,6 +47,10 @@
                     <artifactId>httpclient</artifactId>
                     <groupId>org.apache.httpcomponents</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>nacos-logback-adapter-12</artifactId>
+                    <groupId>com.alibaba.nacos</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
