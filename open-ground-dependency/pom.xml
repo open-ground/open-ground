@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <revision>1.0.2-SNAPSHOT</revision>
+        <revision>1.0.2</revision>
         <spring-boot.version>3.5.7</spring-boot.version>
         <spring-cloud.version>2025.0.3</spring-cloud.version>
         <spring-alibaba.version>2023.0.3.2</spring-alibaba.version>

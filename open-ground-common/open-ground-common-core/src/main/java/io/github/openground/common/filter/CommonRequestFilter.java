@@ -190,7 +190,7 @@ public class CommonRequestFilter implements Filter {
             return;
         }
 
-        log.info("begin do CommonRequestFilter: {}", request.getRequestURI());
+        log.debug("begin do CommonRequestFilter: {}", request.getRequestURI());
 
         // 5. 包装请求体（可重复读取）
         BodyReaderHttpServletRequestWrapper requestWrapper = new BodyReaderHttpServletRequestWrapper(request);
@@ -220,7 +220,7 @@ public class CommonRequestFilter implements Filter {
             urlRegularCheck(request, requestStr);
         }
 
-        log.info("end do CommonRequestFilter, time: {}ms", System.currentTimeMillis() - start.getTime());
+        log.debug("end do CommonRequestFilter, time: {}ms", System.currentTimeMillis() - start.getTime());
         filterChain.doFilter(requestWrapper, response);
     }
 
