@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.Ordered;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -29,12 +30,12 @@ public class TokenFilterProperties {
     private boolean enabled = true;
 
     /** 白名单路径（Ant 路径模式），这些路径不需要 Token 校验 */
-    private List<String> whiteList = Arrays.asList(
+    private List<String> whiteList = new ArrayList<>(Arrays.asList(
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/error",
             "/favicon.ico"
-    );
+    ));
 
     /** 过滤器执行顺序，默认最高优先级 +10 */
     private int order = Ordered.HIGHEST_PRECEDENCE + 10;
