@@ -67,8 +67,18 @@ public class SysDatasourceController {
 
     @Operation(summary = "测试数据源连接")
     @PostMapping("/testConnection")
-    public CommonResult<Boolean> testConnection(@RequestBody SysDatasourceDO ds) {
-        return CommonResult.success(datasourceService.testConnection(ds));
+    public CommonResult<Void> testConnection(
+            @RequestBody SysDatasourceDO ds,
+            @RequestParam(defaultValue = "true") boolean passwordEncrypted) {
+        try {
+            boolean connected = datasourceService.testConnection(ds, passwordEncrypted);
+            if (connected) {
+                return CommonResult.success();
+            }
+            return CommonResult.error("518006", "数据源连接测试失败：连接无效");
+        } catch (Exception e) {
+            return CommonResult.error("518006", "数据源连接测试失败：" + e.getMessage());
+        }
     }
 
     @Operation(summary = "查询数据源表列表")

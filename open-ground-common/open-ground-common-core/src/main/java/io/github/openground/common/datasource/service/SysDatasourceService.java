@@ -41,8 +41,11 @@ public interface SysDatasourceService {
 
     /**
      * 测试数据源连接
+     *
+     * @param ds                数据源信息
+     * @param passwordEncrypted 密码是否已加密（true=密文需解密，false=明文直接使用）
      */
-    boolean testConnection(SysDatasourceDO ds);
+    boolean testConnection(SysDatasourceDO ds, boolean passwordEncrypted);
 
     /**
      * 获取数据源 JDBC 连接

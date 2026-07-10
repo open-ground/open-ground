@@ -76,7 +76,11 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
 
     @Override
     public SysDatasourceDO getById(Long id) {
-        return datasourceMapper.selectById(id);
+        SysDatasourceDO ds = datasourceMapper.selectById(id);
+        if (ds != null && ds.getPassword() != null) {
+            ds.setPassword(decrypt(ds.getPassword()));
+        }
+        return ds;
     }
 
     @Override
@@ -88,12 +92,37 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
     }
 
     @Override
-    public boolean testConnection(SysDatasourceDO ds) {
-        try (Connection conn = getConnection(ds)) {
-            return conn != null && conn.isValid(5);
+    public boolean testConnection(SysDatasourceDO ds, boolean passwordEncrypted) {
+        // passwordEncrypted=true：密码来自数据库，是密文，需解密
+        // passwordEncrypted=false：密码来自编辑界面，是明文，直接使用
+        String password = passwordEncrypted ? decrypt(ds.getPassword()) : ds.getPassword();
+        try {
+            return tryConnect(ds, password);
         } catch (Exception e) {
-            log.error("数据源连接测试异常 - dsName: {}", ds.getDsName(), e);
-            return false;
+            throw new CommonException("518006", "数据源连接测试失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 使用指定密码尝试建立连接并检查有效性
+     */
+    private boolean tryConnect(SysDatasourceDO ds, String password) throws SQLException {
+        String url = resolveJdbcUrl(ds);
+        String driverClass = ds.getDriverClassName();
+        if (driverClass != null && !driverClass.isEmpty()) {
+            try {
+                Class.forName(driverClass);
+            } catch (ClassNotFoundException e) {
+                log.warn("加载驱动类失败: {}, 尝试自动发现", driverClass);
+            }
+        }
+        Properties props = new Properties();
+        props.setProperty("user", ds.getUsername());
+        props.setProperty("password", password);
+        props.setProperty("connectTimeout", "5000");
+        props.setProperty("socketTimeout", "10000");
+        try (Connection conn = DriverManager.getConnection(url, props)) {
+            return conn.isValid(5);
         }
     }
 
