@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.common.datasource.mapper.SysDatasourceTablePermissionMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.openground.common.datasource.entity.SysDatasourceTablePermissionDO">
+        <id column="id" property="id"/>
+        <result column="datasource_id" property="datasourceId"/>
+        <result column="role_id" property="roleId"/>
+        <result column="table_name" property="tableName"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column">
+        id, datasource_id, role_id, table_name, create_by, create_time, update_by, update_time
+    </sql>
+
+    <insert id="batchInsert">
+        INSERT INTO sys_datasource_table_permission
+        (id, datasource_id, role_id, table_name, create_by, create_time, update_by, update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.datasourceId}, #{item.roleId}, #{item.tableName},
+             #{item.createBy}, #{item.createTime}, #{item.updateBy}, #{item.updateTime})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByDatasourceId">
+        DELETE FROM sys_datasource_table_permission WHERE datasource_id = #{datasourceId}
+    </delete>
+
+    <select id="selectByDatasourceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column"/>
+        FROM sys_datasource_table_permission
+        WHERE datasource_id = #{datasourceId}
+        ORDER BY role_id, table_name
+    </select>
+
+    <select id="selectAllowedTables" resultType="java.lang.String">
+        SELECT DISTINCT table_name
+        FROM sys_datasource_table_permission
+        WHERE datasource_id = #{datasourceId}
+          AND role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <select id="selectAllowedTablesByLongRoles" resultType="java.lang.String">
+        SELECT DISTINCT table_name
+        FROM sys_datasource_table_permission
+        WHERE datasource_id = #{datasourceId}
+          AND role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <select id="countByDatasourceId" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM sys_datasource_table_permission
+        WHERE datasource_id = #{datasourceId}
+    </select>
+
+</mapper>

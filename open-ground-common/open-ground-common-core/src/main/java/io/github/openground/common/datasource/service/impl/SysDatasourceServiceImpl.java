@@ -7,7 +7,10 @@ import io.github.openground.base.utils.AESUtil;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.datasource.service.SysDatasourceService;
+import io.github.openground.common.datasource.service.SysDatasourceTablePermissionService;
 import io.github.openground.common.keygen.KeyGenerator;
+import io.github.openground.common.security.SecurityContextHolder;
+import io.github.openground.common.security.spi.UserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +37,9 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
 
     @Autowired
     private SysDatasourceMapper datasourceMapper;
+
+    @Autowired(required = false)
+    private SysDatasourceTablePermissionService tablePermissionService;
 
     @Value("${ground.datasource.encrypt.key:ABCDEFG123456KEY}")
     private String encryptKey;
@@ -152,6 +158,49 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
 
     @Override
     public List<String> listTables(Long datasourceId) {
+        // 严格模式：未获取到当前用户，不返回任何表
+        UserDetails user = SecurityContextHolder.getCurrentUser();
+        if (user == null || user.getRoleIds() == null || user.getRoleIds().isEmpty()) {
+            log.debug("table permission: no user context or no roles, returning empty table list");
+            return Collections.emptyList();
+        }
+
+        // 获取 JDBC 原始表列表
+        List<String> allTables = doListTables(datasourceId);
+
+        // 无表时直接返回
+        if (allTables.isEmpty()) {
+            return allTables;
+        }
+
+        // 权限过滤：查询当前用户角色可见的表
+        if (tablePermissionService != null) {
+            Set<String> allowed = tablePermissionService.queryAllowedTablesByLongRoles(
+                    datasourceId, new HashSet<>(user.getRoleIds()));
+            if (allowed == null) {
+                // null 表示数据源无权限配置 → 严格模式：不返回任何表
+                log.debug("table permission: no permission config for datasource {}, returning empty", datasourceId);
+                return Collections.emptyList();
+            }
+            allTables.retainAll(allowed);
+        } else {
+            // 无表权限服务 → 不返回任何表（严格模式）
+            log.debug("table permission: no tablePermissionService available, returning empty");
+            return Collections.emptyList();
+        }
+
+        return allTables;
+    }
+
+    @Override
+    public List<String> listAllTables(Long datasourceId) {
+        return doListTables(datasourceId);
+    }
+
+    /**
+     * 执行原始 JDBC 表列表查询（跳过权限过滤）
+     */
+    private List<String> doListTables(Long datasourceId) {
         SysDatasourceDO ds = datasourceMapper.selectById(datasourceId);
         if (ds == null) {
             throw new CommonException("514003", "数据源不存在");

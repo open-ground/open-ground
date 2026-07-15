@@ -53,9 +53,16 @@ public interface SysDatasourceService {
     Connection getConnection(SysDatasourceDO ds);
 
     /**
-     * 查询数据源表列表
+     * 查询数据源表列表（受表权限控制）
+     *
+     * <p>严格模式：未登录用户或无权限配置均返回空列表。</p>
      */
     List<String> listTables(Long datasourceId);
+
+    /**
+     * 查询数据源全部表列表（跳过权限过滤，供管理界面使用）
+     */
+    List<String> listAllTables(Long datasourceId);
 
     /**
      * 查询表字段列表

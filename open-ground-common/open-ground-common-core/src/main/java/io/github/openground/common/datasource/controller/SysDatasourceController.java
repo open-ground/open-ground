@@ -2,10 +2,15 @@ package io.github.openground.common.datasource.controller;
 
 import com.github.pagehelper.PageInfo;
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.common.datasource.dto.RoleInfo;
 import io.github.openground.common.datasource.entity.DbTypeVO;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
+import io.github.openground.common.datasource.entity.SysDatasourceTablePermissionDO;
 import io.github.openground.common.datasource.service.SysDatasourceService;
+import io.github.openground.common.datasource.service.SysDatasourceTablePermissionService;
+import io.github.openground.common.datasource.spi.RoleProvider;
 import io.github.openground.common.jdbc.DynamicDataSourceManager;
+import io.github.openground.common.security.SecurityContextHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +39,12 @@ public class SysDatasourceController {
 
     @Autowired(required = false)
     private DynamicDataSourceManager dynamicDataSourceManager;
+
+    @Autowired(required = false)
+    private SysDatasourceTablePermissionService tablePermissionService;
+
+    @Autowired(required = false)
+    private RoleProvider roleProvider;
 
     @Operation(summary = "创建数据源")
     @PostMapping("/create")
@@ -115,9 +127,55 @@ public class SysDatasourceController {
             return CommonResult.error("500", "动态数据源管理器未启用");
         }
         dynamicDataSourceManager.refresh();
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("datasourceCount", dynamicDataSourceManager.getDataSourceList().size());
         result.put("datasourceNames", dynamicDataSourceManager.getDataSourceNames());
         return CommonResult.success(result);
+    }
+
+    // ==================== 表权限管理 ====================
+
+    @Operation(summary = "获取全部角色列表（通过 RoleProvider SPI）")
+    @GetMapping("/roles")
+    public CommonResult<List<RoleInfo>> listRoles() {
+        if (roleProvider == null) {
+            return CommonResult.error("500", "角色服务未启用，未配置 RoleProvider 实现");
+        }
+        return CommonResult.success(roleProvider.getAllRoles());
+    }
+
+    @Operation(summary = "查询数据源表权限（含全部表名，供管理界面使用）")
+    @GetMapping("/{id}/table-permission/query")
+    public CommonResult<Map<String, Object>> queryTablePermission(@PathVariable Long id) {
+        if (tablePermissionService == null) {
+            return CommonResult.error("500", "表权限服务未启用");
+        }
+
+        // 获取全部表名（跳过权限过滤）
+        List<String> allTables = datasourceService.listAllTables(id);
+
+        // 获取已配置的权限
+        List<SysDatasourceTablePermissionDO> permissions = tablePermissionService.queryByDatasource(id);
+        Map<String, List<String>> roleTableMap = tablePermissionService.groupByRole(permissions);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("allTables", allTables);
+        result.put("roleTableMap", roleTableMap);
+        return CommonResult.success(result);
+    }
+
+    @Operation(summary = "保存数据源表权限")
+    @PostMapping("/{id}/table-permission/save")
+    public CommonResult<Void> saveTablePermission(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<String>> roleTableMap) {
+        if (tablePermissionService == null) {
+            return CommonResult.error("500", "表权限服务未启用");
+        }
+
+        String currentUser = SecurityContextHolder.getCurrentUsername();
+        tablePermissionService.saveBatch(id, roleTableMap, currentUser);
+        log.info("table permission saved for datasource {}, by user: {}", id, currentUser);
+        return CommonResult.success();
     }
 }

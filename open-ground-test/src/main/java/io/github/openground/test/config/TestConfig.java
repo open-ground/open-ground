@@ -1,5 +1,7 @@
 package io.github.openground.test.config;
 
+import io.github.openground.common.datasource.dto.RoleInfo;
+import io.github.openground.common.datasource.spi.RoleProvider;
 import io.github.openground.common.security.spi.DefaultUserDetails;
 import io.github.openground.common.security.spi.UserDetails;
 import io.github.openground.common.security.spi.UserDetailsService;
@@ -10,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 
 /**
@@ -60,6 +63,20 @@ public class TestConfig {
                         .build();
             }
         };
+    }
+
+    /**
+     * 模拟的 RoleProvider 实现
+     * <p>提供固定的测试角色数据，供数据源表权限测试使用</p>
+     */
+    @Bean
+    @ConditionalOnMissingBean(RoleProvider.class)
+    public RoleProvider roleProvider() {
+        log.info("初始化测试用 RoleProvider");
+        return () -> Arrays.asList(
+                new RoleInfo("1", "ROLE_ADMIN"),
+                new RoleInfo("2", "ROLE_USER")
+        );
     }
 
 }
