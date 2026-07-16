@@ -398,7 +398,7 @@
     </update>
 
     <!-- 获取批次号（取最大批次号+1） -->
-    <select id="getBatchNo" resultType="io.github.openground.land.common.entity.TaskDispatchExeLogDomain">
+    <select id="getBatchNo" resultType="java.lang.String">
         SELECT COALESCE(MAX(CAST(BATCH_NO AS UNSIGNED)),'0') BATCH_NO FROM TASK_DISPATCH_EXE_LOG WHERE JOB_ID = #{jobId} AND EOD_DATE = #{eodDate} AND COMPANY = #{company}
     </select>
 

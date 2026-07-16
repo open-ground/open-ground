@@ -40,7 +40,7 @@ public class TestJob extends JobEngine {
             po.setId("2021061600003813");
             po.setJobId("test");
 
-            exeLogMapper.updateById(po);
+//            exeLogMapper.updateById(po);
 
             log.info("任务执行成功,耗时" + (new Date().getTime() - start.getTime()) + "毫秒" );
             out.setSuccess(true);

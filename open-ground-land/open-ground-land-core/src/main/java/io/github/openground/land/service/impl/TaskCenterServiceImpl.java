@@ -518,9 +518,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             queryParam.put("company", request.getSysHead().getCompany());
         }
         TaskDispatchConfigDomain task = configMapper.selectTaskDispatchConfigByPK(jobId);
-        TaskDispatchExeLogDomain no = exeLogMapper.getBatchNo(queryParam);
+        String batchNoStr = exeLogMapper.getBatchNo(queryParam);
 
-        Integer batchNo = Integer.parseInt(no.getBatchNo()) + 1;
+        Integer batchNo = (batchNoStr == null || batchNoStr.isEmpty()) ? 1 : Integer.parseInt(batchNoStr) + 1;
 
         TaskDispatchConfigDomain updateTask = new TaskDispatchConfigDomain();
         updateTask.setTaskId(task.getTaskId());

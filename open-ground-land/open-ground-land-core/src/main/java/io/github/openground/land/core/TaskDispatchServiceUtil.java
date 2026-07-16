@@ -119,7 +119,8 @@ public class TaskDispatchServiceUtil {
     }
 
     /**
-     * @param dao
+     * @param configMapper 配置Mapper
+     * @param exeLogMapper 执行日志Mapper
      * @param planStartTime 任务计划执行时间
      */
     public TaskDispatchServiceUtil(TaskDispatchConfigMapper configMapper, TaskDispatchExeLogMapper exeLogMapper, String planStartTime) {
@@ -130,9 +131,10 @@ public class TaskDispatchServiceUtil {
     /**
      * 更新任务执行计划,不追加历史未执行计划
      *
-     * @param dao
-     * @param taskId
-     * @throws Exception
+     * @param configMapper 配置Mapper
+     * @param taskId 任务ID
+     * @param cpsGroup CPS组
+     * @throws Exception 异常
      * @author jack.zhang
      * @date 2017年3月14日 下午6:03:32
      * @version v_1.0
@@ -187,11 +189,11 @@ public class TaskDispatchServiceUtil {
         queryParam.put("jobId", JobId);
         queryParam.put("eodDate", eodDate);
         queryParam.put("company", company);
-        TaskDispatchExeLogDomain no = exeLogMapper.getBatchNo(queryParam);
-        if (no == null) {
+        String batchNoStr = exeLogMapper.getBatchNo(queryParam);
+        if (batchNoStr == null || batchNoStr.isEmpty()) {
             return 1;
         }
-        return Integer.parseInt(no.getBatchNo()) + 1;
+        return Integer.parseInt(batchNoStr) + 1;
     }
 
     /**

@@ -313,23 +313,24 @@
         LEFT JOIN TASK_DISPATCH_CONFIG CONF ON C.TASK_ID = CONF.TASK_ID
     </select>
 
-    <!-- 查询未指定主机，或所指定的主机无法提供服务的定时任务 -->
+    <!-- 查询待调度的任务，通过执行任务主机IP查询，同时也查询出IP未设定的任务 -->
     <select id="selectTaskByIP" resultMap="taskDispatchConfigDomain">
-        SELECT
-        <include refid="taskConfig_Base_Column"/>
-        FROM TASK_DISPATCH_CONFIG TASK
-        WHERE STATUS = '1' AND IS_BEFORE = 'N'
-        <if test="list != null and list.size() > 0">
-            AND TASK.EXE_HOST_IP IN
+        SELECT <include refid="taskConfig_Base_Column"/> FROM TASK_DISPATCH_CONFIG TASK
+        WHERE STATUS = '1' AND IS_BEFORE = 'N' AND CPS_GROUP = #{cpsGroup}
+        AND
+        (
+        <if test="list!=null and list.size()>0">
+            task.EXE_HOST_IP in
             <foreach collection="list" separator="," open="(" close=")" item="item">
                 #{item}
             </foreach>
+            OR
         </if>
+        EXE_HOST_IP is null OR EXE_HOST_IP = ''
+        )
+        AND TASK_ID not in (select DISTINCT task_id from TASK_DISPATCH_EXE_LOG where EXE_STATUS = 'E' )
         <if test="currentTime != null and currentTime != ''">
             AND task.NEXT_EXE_TIME <![CDATA[<=]]> #{currentTime}
-        </if>
-        <if test="cpsGroup != null and cpsGroup != ''">
-            AND TASK.CPS_GROUP = #{cpsGroup}
         </if>
     </select>
 

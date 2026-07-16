@@ -46,7 +46,7 @@ public interface TaskDispatchExeLogMapper extends BaseMapper<TaskDispatchExeLogD
 
     int updateStatusW(Map<String, Object> param);
 
-    TaskDispatchExeLogDomain getBatchNo(Map<String, Object> param);
+    String getBatchNo(Map<String, Object> param);
 
     List<TaskDispatchExeLogDomain> selectBatchNoByJobId(Map<String, Object> param);
 
