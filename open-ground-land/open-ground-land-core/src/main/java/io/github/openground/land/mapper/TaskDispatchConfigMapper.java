@@ -49,4 +49,15 @@ public interface TaskDispatchConfigMapper extends BaseMapper<TaskDispatchConfigD
     int runSql(@Param("sql") String sql);
 
     void callProcedure(Map<String, Object> param);
+
+    // ==================== 仪表盘统计 ====================
+
+    /** 仪表盘统计 */
+    io.github.openground.land.api.dto.TaskDashboardResponse queryDashboard(Map<String, Object> param);
+
+    /** 调度报表 */
+    List<io.github.openground.land.common.entity.ScheduleDomain> queryScheduleList(Map<String, Object> param);
+
+    /** 待执行任务列表 */
+    List<TaskDispatchConfigDomain> queryPreTaskList(Map<String, Object> param);
 }

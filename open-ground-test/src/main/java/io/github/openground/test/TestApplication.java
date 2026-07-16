@@ -14,6 +14,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class TestApplication {
     public static void main(String[] args) {
         System.setProperty("nacos.logging.default.config.enabled", "false");
-        SpringApplication.run(TestApplication.class, args);
+        SpringApplication application = new SpringApplication(TestApplication.class);
+        application.setAllowBeanDefinitionOverriding(true);
+        application.setAllowCircularReferences(true);
+        application.run(args);
     }
 }

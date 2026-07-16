@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @author open-ground
  * @version 1.0
  */
-@FeignClient(name = "${ground.auth.application.name:ground-auth}",
-             path = "${ground.auth.server.context-path:}",
+@FeignClient(name = "${ground.auth.application.name: ground-auth}",
+             path = "${ground.auth.server.context-path: }",
              url = "${ground.auth.url:}")
 public interface AuthFeignClient {
 

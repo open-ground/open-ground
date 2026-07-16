@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
 
-    private static final String BASE_PATH = "/land/taskcenter";
+    private static final String BASE_PATH = "/task/taskcenter";
 
     @Autowired
     private DbServiceDiscovery dbServiceDiscovery;

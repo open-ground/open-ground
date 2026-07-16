@@ -27,7 +27,6 @@ import java.util.Properties;
  * <h3>多模块约定</h3>
  * 各业务模块在 {@code src/main/resources/} 下放置符合命名约定的文件即可：
  * <ul>
- *   <li>{@code error-code-base.properties}</li>
  *   <li>{@code error-code-security.properties}</li>
  *   <li>{@code error-code-xxx.properties}</li>
  * </ul>

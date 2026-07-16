@@ -60,11 +60,13 @@
         <include refid="taskConfig_Base_Column"/>
         FROM TASK_DISPATCH_CONFIG TASK
         WHERE STATUS = '1' AND IS_BEFORE = 'N'
+        <if test="list != null and list.size() > 0">
             AND TASK.EXE_HOST_IP IN
-        <foreach collection="list" separator="," open="(" close=")" item="item">
-            #{item}
-        </foreach>
-        AND TASK_ID not in (select DISTINCT task_id from TASK_DISPATCH_EXE_LOG where EXE_STATUS = 'E' )
+            <foreach collection="list" separator="," open="(" close=")" item="item">
+                #{item}
+            </foreach>
+            AND TASK_ID not in (select DISTINCT task_id from TASK_DISPATCH_EXE_LOG where EXE_STATUS = 'E' )
+        </if>
         <if test="currentTime != null and currentTime != ''">
             AND task.NEXT_EXE_TIME <![CDATA[<=]]> #{currentTime}
         </if>
@@ -317,10 +319,12 @@
         <include refid="taskConfig_Base_Column"/>
         FROM TASK_DISPATCH_CONFIG TASK
         WHERE STATUS = '1' AND IS_BEFORE = 'N'
+        <if test="list != null and list.size() > 0">
             AND TASK.EXE_HOST_IP IN
-        <foreach collection="list" separator="," open="(" close=")" item="item">
-            #{item}
-        </foreach>
+            <foreach collection="list" separator="," open="(" close=")" item="item">
+                #{item}
+            </foreach>
+        </if>
         <if test="currentTime != null and currentTime != ''">
             AND task.NEXT_EXE_TIME <![CDATA[<=]]> #{currentTime}
         </if>
@@ -422,6 +426,81 @@
         SELECT <include refid="taskConfig_Base_Column"/>
         FROM TASK_DISPATCH_CONFIG
         WHERE TASK_ID = #{taskId}
+    </select>
+
+    <!-- ==================== 仪表盘统计 ==================== -->
+
+    <resultMap id="DashboardResultMap" type="io.github.openground.land.api.dto.TaskDashboardResponse">
+        <result column="TOTAL_TASK" property="totalTask" jdbcType="INTEGER" />
+        <result column="ACTIVATE_TASK" property="activateTask" jdbcType="INTEGER" />
+        <result column="DISABLE_TASK" property="disableTask" jdbcType="INTEGER" />
+        <result column="SCH_COUNT" property="schCount" jdbcType="INTEGER" />
+        <result column="SCH_COUNT_ERROR" property="schCountError" jdbcType="INTEGER" />
+        <result column="TODAY_SCH_COUNT" property="todaySchCount" jdbcType="INTEGER" />
+        <result column="TODAY_SCH_COUNT_ERROR" property="todaySchCountError" jdbcType="INTEGER" />
+        <result column="TOTAL_NODE" property="totalNode" jdbcType="INTEGER" />
+        <result column="DISABLE_NODE" property="disableNode" jdbcType="INTEGER" />
+        <result column="SYS_EOD_DATE" property="sysEodDate" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryDashboard" resultMap="DashboardResultMap">
+        SELECT * FROM
+        (	SELECT
+            COUNT(*) AS TOTAL_TASK,
+            SUM(CASE WHEN STATUS = '0' THEN 1 ELSE 0 END) AS ACTIVATE_TASK,
+            SUM(CASE WHEN STATUS = '1' THEN 1 ELSE 0 END) AS DISABLE_TASK
+            FROM TASK_DISPATCH_CONFIG WHERE CPS_GROUP = #{cpsGroup} ) T1,
+
+        (	SELECT
+            COUNT(*) AS SCH_COUNT,
+            SUM(CASE WHEN EXE_STATUS = 'E' OR EXE_STATUS = 'F' THEN 1 ELSE 0 END) AS SCH_COUNT_ERROR
+            FROM TASK_DISPATCH_EXE_LOG) T2,
+
+        (	SELECT
+            COUNT(*) AS TODAY_SCH_COUNT,
+            SUM(CASE WHEN EXE_STATUS = 'E' OR EXE_STATUS = 'F' THEN 1 ELSE 0 END) AS TODAY_SCH_COUNT_ERROR
+            FROM TASK_DISPATCH_EXE_LOG WHERE EOD_DATE LIKE CONCAT('%', #{currentDate}, '%') ) T3,
+
+        (	SELECT
+            COUNT(*) AS TOTAL_NODE,
+            SUM(CASE WHEN ACTIVE_STATUS = 'OFF' OR ACTIVE_TIME <![CDATA[ < ]]> #{activeTime} THEN 1 ELSE 0 END) AS DISABLE_NODE
+            FROM TASK_DISPATCH_ACTIVE_HOST WHERE CPS_GROUP = #{cpsGroup} ) T4
+    </select>
+
+    <resultMap id="ScheduleResultMap" type="io.github.openground.land.common.entity.ScheduleDomain">
+        <result column="SCH_COUNT" property="schCount" jdbcType="INTEGER" />
+        <result column="SCH_COUNT_ERROR" property="schCountError" jdbcType="INTEGER" />
+        <result column="SCH_COUNT_SUCCESS" property="schCountSuccess" jdbcType="INTEGER" />
+        <result column="SYS_EOD_DATE" property="sysEodDate" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryScheduleList" resultMap="ScheduleResultMap">
+        SELECT
+            SYS_EOD_DATE,
+            SCH_COUNT_ERROR,
+            (SCH_COUNT - SCH_COUNT_ERROR) AS SCH_COUNT_SUCCESS
+        FROM
+        (
+            SELECT
+                EOD_DATE AS SYS_EOD_DATE,
+                COUNT(*) AS SCH_COUNT,
+                SUM(CASE WHEN EXE_STATUS = 'E' OR EXE_STATUS = 'F' THEN 1 ELSE 0 END) AS SCH_COUNT_ERROR
+            FROM
+                TASK_DISPATCH_EXE_LOG  WHERE EOD_DATE <![CDATA[ > ]]> #{sysEodDate}
+            GROUP BY
+                EOD_DATE
+        ) T1
+    </select>
+
+    <select id="queryPreTaskList" resultMap="taskDispatchConfigDomain">
+        SELECT * FROM
+        (
+            SELECT TASK_ID, TASK_NAME, NEXT_EXE_TIME FROM TASK_DISPATCH_CONFIG
+            WHERE STATUS = '1' AND IS_BEFORE = 'N' AND CPS_GROUP = #{cpsGroup}
+            UNION ALL
+            SELECT TASK_ID, EXTEND3 AS TASK_NAME, PLAN_START_TIME AS NEXT_EXE_TIME
+            FROM TASK_DISPATCH_EXE_LOG WHERE EXE_STATUS IN ('P','W')
+        ) T ORDER BY NEXT_EXE_TIME
     </select>
 
 </mapper>

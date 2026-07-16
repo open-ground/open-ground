@@ -9,8 +9,13 @@ import io.github.openground.base.dto.CommonResult;
 import io.github.openground.base.utils.SpringUtil;
 import io.github.openground.land.api.dto.TaskCenterRequest;
 import io.github.openground.land.api.dto.TaskDispatchParamRequest;
+import io.github.openground.land.api.dto.TaskMonitorRequest;
+import io.github.openground.land.api.dto.TaskMonitorResponse;
+import io.github.openground.land.api.dto.TaskDashboardResponse;
 import io.github.openground.land.api.dto.TaskSegmentRequest;
+import io.github.openground.land.common.constants.ErrorCode;
 import io.github.openground.land.api.domain.StepSegmentExeInfo;
+import io.github.openground.land.common.entity.ScheduleDomain;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogExt;
@@ -21,6 +26,7 @@ import io.github.openground.land.common.util.TaskDateUtil;
 import io.github.openground.land.core.ConditionJobThread;
 import io.github.openground.land.core.ExecuteJobThread;
 import io.github.openground.land.core.StartTaskThread;
+import io.github.openground.land.core.TaskCenterStartThread;
 import io.github.openground.land.core.TaskDispatchServiceUtil;
 import io.github.openground.land.mapper.TaskDispatchActiveHostMapper;
 import io.github.openground.land.mapper.TaskDispatchConfigMapper;
@@ -31,14 +37,27 @@ import io.github.openground.land.service.TaskCenterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 
 /**
  * 任务中心服务实现
@@ -732,11 +751,12 @@ public class TaskCenterServiceImpl implements TaskCenterService {
     @Override
     public CommonResult<?> queryParams(TaskDispatchParamRequest request) {
         Map<String, Object> queryParam = new HashMap<>();
-        queryParam.put("paramId", request.getKeyWord() != null ? request.getKeyWord() : request.getParamId());
         queryParam.put("paramName", request.getParamName());
         if (request.getSysHead() != null) {
             queryParam.put("company", request.getSysHead().getCompany());
         }
+        queryParam.put("cpsGroup", request.getCpsGroup() != null ? request.getCpsGroup() : cpsGroup);
+        queryParam.put("keyWord", request.getKeyWord());
 
         int pageIndex = request.getPageIndex() > 0 ? request.getPageIndex() : 1;
         int pageSize = request.getPageSize() > 0 ? request.getPageSize() : 10;
@@ -816,6 +836,26 @@ public class TaskCenterServiceImpl implements TaskCenterService {
         return CommonResult.success(result);
     }
 
+    // ==================== 查询调度组列表 ====================
+
+    @Override
+    public CommonResult<?> queryCpsGroup(TaskDispatchParamRequest request) {
+        List<String> cpsGroupList = new ArrayList<>();
+        if (StrUtil.isNotBlank(request.getCpsGroup())) {
+            // 有指定 cpsGroup 时，转大写后直接返回
+            cpsGroupList.add(request.getCpsGroup().toUpperCase());
+        } else {
+            // 从 active_host 表查询所有活跃的 cpsGroup（去重）
+            // 活跃判定：ACTIVE_STATUS = 'ON' 或 ACTIVE_TIME 在最近 10 分钟内
+            Map<String, Object> param = new HashMap<>();
+            param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - 10 * 60 * 1000));
+            cpsGroupList = activeHostMapper.selectDistinctActiveCpsGroups(param);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("resultlist", cpsGroupList);
+        return CommonResult.success(result);
+    }
+
     // ==================== 分段任务 ====================
 
     @Override
@@ -859,5 +899,124 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             log.info("清理分段上下文: taskPlanId={}", taskPlanId);
         }
         return CommonResult.success(null);
+    }
+
+    // ==================== 任务监控 ====================
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Override
+    public CommonResult<?> getCpsServiceList(TaskMonitorRequest request) {
+        Map<String, Object> param = new HashMap<>();
+        if (request.getCpsGroup() != null && !request.getCpsGroup().isEmpty()) {
+            param.put("cpsGroup", request.getCpsGroup());
+        }
+        List<Map<String, Object>> activeHosts = activeHostMapper.hostListlistPage(param);
+        List<Map<String, String>> urlList = new ArrayList<>();
+        for (Map<String, Object> host : activeHosts) {
+            Map<String, String> one = new HashMap<>();
+            one.put("url", "http://" + host.get("HOST_IP"));
+            one.put("server", (String) host.get("CPS_GROUP"));
+            urlList.add(one);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("resultlist", urlList);
+        return CommonResult.success(result);
+    }
+
+    @Override
+    public CommonResult<?> threadPoolMonitor(TaskMonitorRequest request) {
+        String serviceUrl = request.getServiceUrl();
+        if (serviceUrl != null && !serviceUrl.isEmpty()) {
+            // 转发到目标实例
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<TaskMonitorRequest> entity = new HttpEntity<>(request, headers);
+                ResponseEntity<TaskMonitorResponse> response = restTemplate.postForEntity(
+                        serviceUrl + "/task/taskcenter/threadPoolMonitor", entity, TaskMonitorResponse.class);
+                return CommonResult.success(response.getBody());
+            } catch (Exception e) {
+                log.error("远程调用 threadPoolMonitor 异常: {}", serviceUrl, e);
+                return CommonResult.error(ErrorCode.FAIL, "远程调用失败: " + e.getMessage());
+            }
+        }
+        // 本地执行
+        TaskMonitorResponse out = new TaskMonitorResponse();
+        // 调度主线程池
+        ScheduledThreadPoolExecutor executor = TaskCenterStartThread.getExecutor();
+        Map<String, Object> dispatchThreadPool = new HashMap<>();
+        dispatchThreadPool.put("queueSize", executor.getQueue().size() + "");
+        dispatchThreadPool.put("isShutdown", executor.isShutdown() + "");
+        dispatchThreadPool.put("isTerminated", executor.isTerminated() + "");
+        dispatchThreadPool.put("isTerminating", executor.isTerminating() + "");
+        dispatchThreadPool.put("activeCount", executor.getActiveCount() + "");
+        dispatchThreadPool.put("taskCount", executor.getTaskCount() + "");
+        out.setDispatchThreadPool(dispatchThreadPool);
+        // 任务执行线程池
+        ThreadPoolExecutor taskPoolExecutor = (ThreadPoolExecutor) TaskDispatchServiceUtil.getPoolExecutor();
+        Map<String, Object> taskThreadPool = new HashMap<>();
+        taskThreadPool.put("queueSize", taskPoolExecutor.getQueue().size() + "");
+        taskThreadPool.put("isShutdown", taskPoolExecutor.isShutdown() + "");
+        taskThreadPool.put("isTerminated", taskPoolExecutor.isTerminated() + "");
+        taskThreadPool.put("isTerminating", taskPoolExecutor.isTerminating() + "");
+        taskThreadPool.put("activeCount", taskPoolExecutor.getActiveCount() + "");
+        taskThreadPool.put("taskCount", taskPoolExecutor.getTaskCount() + "");
+        out.setTaskThreadPool(taskThreadPool);
+        // JVM 内存
+        MemoryMXBean mb = ManagementFactory.getMemoryMXBean();
+        Map<String, Object> jvmInfo = new LinkedHashMap<>();
+        jvmInfo.put("HeapMemoryUsage-Max", mb.getHeapMemoryUsage().getMax() / 1024 / 1024 + "MB");
+        jvmInfo.put("HeapMemoryUsage-Init", mb.getHeapMemoryUsage().getInit() / 1024 / 1024 + "MB");
+        jvmInfo.put("HeapMemoryUsage-Committed", mb.getHeapMemoryUsage().getCommitted() / 1024 / 1024 + "MB");
+        jvmInfo.put("HeapMemoryUsage-Used", mb.getHeapMemoryUsage().getUsed() / 1024 / 1024 + "MB");
+        out.setJvmInfo(jvmInfo);
+        // 线程信息
+        ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+        List<Map<String, Object>> threadList = new ArrayList<>();
+        for (long id : tmx.getAllThreadIds()) {
+            ThreadInfo ti = tmx.getThreadInfo(id);
+            if (ti != null && ti.getThreadName() != null && ti.getThreadName().contains("DisPatch")) {
+                Map<String, Object> t = new HashMap<>();
+                String[] str = ti.toString().trim().split(" ");
+                t.put("threadName", str[0].replaceAll("\"", ""));
+                t.put("status", str.length > 2 ? str[2] : "");
+                t.put("info", ti.toString().trim() + " cpu time:" + tmx.getThreadCpuTime(id) + " user time:" + tmx.getThreadUserTime(id));
+                threadList.add(t);
+            }
+        }
+        out.setThreadList(threadList);
+        out.setCurrentTime(TaskDateUtil.getMachingCurrentTime());
+        return CommonResult.success(out);
+    }
+
+    @Override
+    public CommonResult<?> taskDashboard(TaskMonitorRequest request) {
+        Map<String, Object> param = new HashMap<>();
+        param.put("cpsGroup", request.getCpsGroup());
+        if (request.getSysEodDate() == null || request.getSysEodDate().isEmpty()) {
+            request.setSysEodDate(TaskDateUtil.getSysEodDate(request.getCpsGroup()));
+        }
+        param.put("sysEodDate", request.getSysEodDate());
+        String activeTime = TaskDateUtil.nextOrBeforPriodTime(TaskDateUtil.getMachingCurrentTime(), -30 * 2, "s");
+        param.put("activeTime", activeTime);
+        param.put("currentDate", TaskDateUtil.getMachingCurrentDate());
+
+        TaskDashboardResponse out = configMapper.queryDashboard(param);
+        out.setSchCountSuccess(out.getSchCount() - out.getSchCountError());
+        out.setTodaySchCountSuccess(out.getTodaySchCount() - out.getTodaySchCountError());
+        out.setActivateNode(out.getTotalNode() - out.getDisableNode());
+        out.setSysEodDate(request.getSysEodDate());
+
+        // 调度报表
+        param.put("sysEodDate", request.getSysEodDate());
+        List<ScheduleDomain> scheduleList = configMapper.queryScheduleList(param);
+        out.setScheduleList(scheduleList);
+
+        // 待执行任务列表
+        List<TaskDispatchConfigDomain> preTaskList = configMapper.queryPreTaskList(param);
+        out.setPreTaskList(preTaskList);
+
+        return CommonResult.success(out);
     }
 }

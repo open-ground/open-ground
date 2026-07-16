@@ -97,6 +97,16 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
         return new PageInfo<>(datasourceMapper.selectList(query));
     }
 
+
+    @Override
+    public List<SysDatasourceDO> listAll(SysDatasourceDO query) {
+        List<SysDatasourceDO> list = datasourceMapper.selectList(query);
+        for (SysDatasourceDO ds : list) {
+            ds.setPassword(null);
+        }
+        return list;
+    }
+
     @Override
     public boolean testConnection(SysDatasourceDO ds, boolean passwordEncrypted) {
         // passwordEncrypted=true：密码来自数据库，是密文，需解密

@@ -30,6 +30,9 @@ public interface TaskDispatchActiveHostMapper {
     /** 获取指定 cpsGroup 下所有状态为 ON 的活跃主机 IP */
     List<String> selectActiveHostsByCpsGroup(Map<String, Object> param);
 
+    /** 查询所有活跃的 cpsGroup（去重）— 活跃判定：ACTIVE_STATUS='ON' 或 ACTIVE_TIME > 阈值 */
+    List<String> selectDistinctActiveCpsGroups(Map<String, Object> param);
+
     int updateHostIp(Map<String, Object> param);
 
     int updateSysEodDate(Map<String, Object> param);

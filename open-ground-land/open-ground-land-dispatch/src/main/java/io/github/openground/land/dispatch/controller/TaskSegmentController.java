@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @Tag(name = "分段任务")
 @RestController
-@RequestMapping("/land/taskcenter/segment")
+@RequestMapping("/task/taskcenter/segment")
 public class TaskSegmentController {
 
     @Autowired

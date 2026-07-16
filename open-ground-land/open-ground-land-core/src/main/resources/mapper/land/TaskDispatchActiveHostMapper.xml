@@ -109,4 +109,11 @@
         </if>
     </update>
 
+    <!-- 查询所有活跃的 cpsGroup（去重） — 活跃判定：状态=开启 或 心跳时间在最近 10 分钟内 -->
+    <select id="selectDistinctActiveCpsGroups" resultType="string">
+        SELECT DISTINCT CPS_GROUP FROM TASK_DISPATCH_ACTIVE_HOST
+        WHERE ACTIVE_STATUS = 'ON'
+           OR ACTIVE_TIME > #{activeTimeThreshold}
+    </select>
+
 </mapper>

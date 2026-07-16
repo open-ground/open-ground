@@ -35,6 +35,13 @@ public class TaskDateUtil implements ApplicationContextAware {
     @Override
     public void setApplicationContext(ApplicationContext ctx) throws BeansException {
         context = ctx;
+        // 从Spring容器获取调度框架专用的DataSource（landDataSource）
+        try {
+            dataSource = (DataSource) ctx.getBean("landDataSource");
+            log.debug("成功获取landDataSource: {}", dataSource.getClass().getName());
+        } catch (Exception e) {
+            log.error("获取landDataSource失败", e);
+        }
     }
 
     public void init() {

@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @Tag(name = "任务中心")
 @RestController
-@RequestMapping("/land/taskcenter")
+@RequestMapping("/task/taskcenter")
 public class TaskCenterController {
 
     @Autowired
@@ -78,14 +78,14 @@ public class TaskCenterController {
 
     @Operation(summary = "查询主机列表")
     @OptLog(optType = OptType.OTHER, optRemark = "查询主机列表")
-    @PostMapping("/queryhostlist")
+    @PostMapping("/queryHostList")
     public CommonResult<?> queryHostList(@Valid @RequestBody TaskCenterRequest request) {
         return taskCenterService.queryHostList(request);
     }
 
     @Operation(summary = "引擎启停操作")
     @OptLog(optType = OptType.UPDATE, optRemark = "引擎启停操作")
-    @PostMapping("/onOrOffEngine")
+    @PostMapping("/engine")
     public CommonResult<?> onOrOffEngine(@Valid @RequestBody TaskCenterRequest request) {
         return taskCenterService.onOrOffEngine(request);
     }

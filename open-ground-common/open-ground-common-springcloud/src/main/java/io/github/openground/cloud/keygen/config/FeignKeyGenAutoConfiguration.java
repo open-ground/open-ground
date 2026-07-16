@@ -3,6 +3,7 @@ package io.github.openground.cloud.keygen.config;
 import io.github.openground.cloud.auth.AuthFeignClient;
 import io.github.openground.cloud.keygen.FeignSequenceProvider;
 import io.github.openground.common.config.condition.ConditionalOnService;
+import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.common.keygen.SequenceProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -34,5 +35,17 @@ public class FeignKeyGenAutoConfiguration {
     public SequenceProvider feignSequenceProvider(AuthFeignClient feignClient) {
         log.info("Feign 序列提供者已启用（远程调用 Auth 获取序列）");
         return new FeignSequenceProvider(feignClient);
+    }
+
+    /**
+     * 主键生成器
+     * <p>自动注入已存在的 {@link SequenceProvider}，并注册为静态默认实例。</p>
+     */
+    @Bean
+    public KeyGenerator keyGenerator(SequenceProvider sequenceProvider) {
+        KeyGenerator generator = new KeyGenerator(sequenceProvider);
+        KeyGenerator.init(generator);
+        log.info("初始化 KeyGenerator 完成");
+        return generator;
     }
 }

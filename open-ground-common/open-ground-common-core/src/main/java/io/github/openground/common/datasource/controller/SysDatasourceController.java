@@ -77,6 +77,12 @@ public class SysDatasourceController {
         return CommonResult.success(datasourceService.list(query));
     }
 
+    @Operation(summary = "查询数据源列表")
+    @PostMapping("/listAll")
+    public CommonResult<List<SysDatasourceDO>> listAll(@RequestBody SysDatasourceDO query) {
+        return CommonResult.success(datasourceService.listAll(query));
+    }
+
     @Operation(summary = "测试数据源连接")
     @PostMapping("/testConnection")
     public CommonResult<Void> testConnection(
@@ -144,9 +150,9 @@ public class SysDatasourceController {
         return CommonResult.success(roleProvider.getAllRoles());
     }
 
-    @Operation(summary = "查询数据源表权限（含全部表名，供管理界面使用）")
-    @GetMapping("/{id}/table-permission/query")
-    public CommonResult<Map<String, Object>> queryTablePermission(@PathVariable Long id) {
+    @Operation(summary = "查询数据源表权限")
+    @GetMapping("/{id}/alltables")
+    public CommonResult<Map<String, Object>> alltables(@PathVariable Long id) {
         if (tablePermissionService == null) {
             return CommonResult.error("500", "表权限服务未启用");
         }

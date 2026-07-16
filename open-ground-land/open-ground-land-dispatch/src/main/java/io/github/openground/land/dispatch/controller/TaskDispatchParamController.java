@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @Tag(name = "任务参数")
 @RestController
-@RequestMapping("/land/taskcenter/param")
+@RequestMapping("/task/taskcenter/param")
 public class TaskDispatchParamController {
 
     @Autowired
@@ -57,5 +57,11 @@ public class TaskDispatchParamController {
     @PostMapping("/queryOptions")
     public CommonResult<?> queryOptions(@Valid @RequestBody TaskDispatchParamRequest request) {
         return taskCenterService.queryParamOptions(request);
+    }
+
+    @Operation(summary = "查询调度组列表")
+    @PostMapping("/queryCpsGroup")
+    public CommonResult<?> queryCpsGroup(@RequestBody TaskDispatchParamRequest request) {
+        return taskCenterService.queryCpsGroup(request);
     }
 }

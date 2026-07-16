@@ -75,6 +75,9 @@ public interface TaskCenterService {
     /** 参数选项查询（参数列表 + 任务列表） */
     CommonResult<?> queryParamOptions(TaskDispatchParamRequest request);
 
+    /** 查询调度组列表 */
+    CommonResult<?> queryCpsGroup(TaskDispatchParamRequest request);
+
     // ==================== 分段任务 ====================
 
     /** 执行分段任务 */
@@ -85,4 +88,15 @@ public interface TaskCenterService {
 
     /** 清理分段上下文 */
     CommonResult<?> cleanSegmentContext(TaskSegmentRequest request);
+
+    // ==================== 任务监控 ====================
+
+    /** 获取 CPS 服务列表 */
+    CommonResult<?> getCpsServiceList(io.github.openground.land.api.dto.TaskMonitorRequest request);
+
+    /** 线程池监控 */
+    CommonResult<?> threadPoolMonitor(io.github.openground.land.api.dto.TaskMonitorRequest request);
+
+    /** 任务仪表盘 */
+    CommonResult<?> taskDashboard(io.github.openground.land.api.dto.TaskMonitorRequest request);
 }

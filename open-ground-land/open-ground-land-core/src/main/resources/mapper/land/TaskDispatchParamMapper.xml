@@ -39,6 +39,7 @@
     <sql id="Base_Where">
         <trim suffixOverrides="AND">
             <if test="company != null and company != ''">COMPANY = #{company} AND</if>
+            <if test="keyWord != null and keyWord != ''">(PARAM_ID LIKE CONCAT('%', #{keyWord}, '%') OR PARAM_NAME LIKE CONCAT('%', #{keyWord}, '%')) AND</if>
             <if test="paramId != null and paramId != ''">PARAM_ID = #{paramId} AND</if>
             <if test="paramName != null and paramName != ''">PARAM_NAME = #{paramName} AND</if>
             <if test="hostIp != null and hostIp != ''">HOST_IP = #{hostIp} AND</if>

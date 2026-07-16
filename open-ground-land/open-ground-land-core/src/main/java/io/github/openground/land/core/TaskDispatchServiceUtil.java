@@ -5,7 +5,6 @@ import io.github.openground.base.utils.CommonUtil;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
-import io.github.openground.land.common.entity.TaskDispatchExeLogExt;
 import io.github.openground.land.common.entity.TaskDispatchParam;
 import io.github.openground.land.common.util.PageData;
 import io.github.openground.land.common.util.TaskDateUtil;
@@ -189,6 +188,9 @@ public class TaskDispatchServiceUtil {
         queryParam.put("eodDate", eodDate);
         queryParam.put("company", company);
         TaskDispatchExeLogDomain no = exeLogMapper.getBatchNo(queryParam);
+        if (no == null) {
+            return 1;
+        }
         return Integer.parseInt(no.getBatchNo()) + 1;
     }
 

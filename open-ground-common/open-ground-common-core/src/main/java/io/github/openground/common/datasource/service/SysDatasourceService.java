@@ -40,6 +40,11 @@ public interface SysDatasourceService {
     PageInfo<SysDatasourceDO> list(SysDatasourceDO query);
 
     /**
+     * 查询数所有据源列表
+     */
+    List<SysDatasourceDO> listAll(SysDatasourceDO query);
+
+    /**
      * 测试数据源连接
      *
      * @param ds                数据源信息
