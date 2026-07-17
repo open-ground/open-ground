@@ -1,6 +1,7 @@
 package io.github.openground.land.dispatch.executor;
 
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.land.api.dto.TaskCenterRequest;
 import io.github.openground.land.api.executor.RemoteTaskExecutor;
 import io.github.openground.land.common.constants.ErrorCode;
 import io.github.openground.land.dispatch.discovery.DbServiceDiscovery;
@@ -58,9 +59,20 @@ public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
             return CommonResult.error(ErrorCode.FAIL, "cpsGroup [" + cpsGroup + "] 无可用服务实例");
         }
 
-        // 2. 简单轮询负载均衡
-        int index = Math.abs(counter.getAndIncrement() % hosts.size());
-        String targetHost = hosts.get(index);
+        // 2. 确定目标实例 IP：如果请求中指定了 hostIp 且属于可用实例，则直接使用，不做负载均衡
+        String targetHost;
+        String specifiedIp = extractHostIp(request);
+        if (specifiedIp != null && hosts.contains(specifiedIp)) {
+            targetHost = specifiedIp;
+            log.info("RemoteTaskExecutor 使用指定实例: cpsGroup={}, target={}", cpsGroup, targetHost);
+        } else {
+            if (specifiedIp != null) {
+                log.warn("指定的实例 IP [{}] 不在可用列表中，将进行负载均衡", specifiedIp);
+            }
+            // 简单轮询负载均衡
+            int index = Math.abs(counter.getAndIncrement() % hosts.size());
+            targetHost = hosts.get(index);
+        }
 
         // 3. 构建完整 URL
         String url = "http://" + targetHost + BASE_PATH + action;
@@ -79,5 +91,18 @@ public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
             log.error("RemoteTaskExecutor 转发失败: cpsGroup={}, url={}", cpsGroup, url, e);
             return CommonResult.error(ErrorCode.FAIL, "远程调用失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 从请求对象中提取指定的目标主机 IP
+     */
+    private String extractHostIp(Object request) {
+        if (request instanceof TaskCenterRequest) {
+            String hostIp = ((TaskCenterRequest) request).getHostIp();
+            if (hostIp != null && !hostIp.isEmpty()) {
+                return hostIp;
+            }
+        }
+        return null;
     }
 }

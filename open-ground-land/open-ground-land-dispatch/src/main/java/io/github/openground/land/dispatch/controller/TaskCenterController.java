@@ -78,7 +78,7 @@ public class TaskCenterController {
 
     @Operation(summary = "查询主机列表")
     @OptLog(optType = OptType.OTHER, optRemark = "查询主机列表")
-    @PostMapping("/queryHostList")
+    @PostMapping("/queryhostlist")
     public CommonResult<?> queryHostList(@Valid @RequestBody TaskCenterRequest request) {
         return taskCenterService.queryHostList(request);
     }

@@ -75,11 +75,11 @@
          WHERE LOG.TASK_ID = #{exeingTaskId} AND LOG.EXE_STATUS IN ('R','P'))
     </select>
 
-    <!-- 获取指定 cpsGroup 下所有状态为 ON 的活跃主机 IP -->
+    <!-- 获取指定 cpsGroup 下所有活跃主机 IP（活跃判定：心跳时间在最近 3 分钟内） -->
     <select id="selectActiveHostsByCpsGroup" resultType="String">
         SELECT HOST_IP FROM TASK_DISPATCH_ACTIVE_HOST
         WHERE CPS_GROUP = #{cpsGroup}
-          AND ACTIVE_STATUS = 'ON'
+          AND ACTIVE_TIME > #{activeTimeThreshold}
         ORDER BY ACTIVE_TIME DESC
     </select>
 
@@ -109,11 +109,10 @@
         </if>
     </update>
 
-    <!-- 查询所有活跃的 cpsGroup（去重） — 活跃判定：状态=开启 或 心跳时间在最近 10 分钟内 -->
+    <!-- 查询所有活跃的 cpsGroup（去重） — 活跃判定：心跳时间在最近 3 分钟内 -->
     <select id="selectDistinctActiveCpsGroups" resultType="string">
         SELECT DISTINCT CPS_GROUP FROM TASK_DISPATCH_ACTIVE_HOST
-        WHERE ACTIVE_STATUS = 'ON'
-           OR ACTIVE_TIME > #{activeTimeThreshold}
+        WHERE ACTIVE_TIME > #{activeTimeThreshold}
     </select>
 
 </mapper>

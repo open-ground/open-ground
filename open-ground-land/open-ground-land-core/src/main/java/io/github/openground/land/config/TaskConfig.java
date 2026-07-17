@@ -40,4 +40,7 @@ public class TaskConfig {
      */
     private Map<String, Object> dispatchCenter = new HashMap<>();
 
+    /** 活跃主机心跳超时秒数（默认 180 秒 = 3 分钟） */
+    private int activeHostTimeoutSeconds = 180;
+
 }

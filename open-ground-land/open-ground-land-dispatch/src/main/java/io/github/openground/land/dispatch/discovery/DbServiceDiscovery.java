@@ -1,11 +1,13 @@
 package io.github.openground.land.dispatch.discovery;
 
+import io.github.openground.land.config.TaskConfig;
 import io.github.openground.land.mapper.TaskDispatchActiveHostMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +29,12 @@ public class DbServiceDiscovery {
     @Autowired
     private TaskDispatchActiveHostMapper activeHostMapper;
 
+    @Autowired
+    private TaskConfig taskConfig;
+
     /**
      * 获取指定 cpsGroup 下可用的服务实例主机 IP 列表
+     * <p>活跃判定：心跳时间在最近 3 分钟内更新过即视为活跃</p>
      *
      * @param cpsGroup    调度组
      * @return 可用主机 IP 列表
@@ -41,6 +47,7 @@ public class DbServiceDiscovery {
         try {
             Map<String, Object> param = new HashMap<>();
             param.put("cpsGroup", cpsGroup);
+            param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - taskConfig.getActiveHostTimeoutSeconds() * 1000L));
             List<String> hosts = activeHostMapper.selectActiveHostsByCpsGroup(param);
             log.debug("cpsGroup [{}] 可用主机: {}", cpsGroup, hosts);
             return hosts;

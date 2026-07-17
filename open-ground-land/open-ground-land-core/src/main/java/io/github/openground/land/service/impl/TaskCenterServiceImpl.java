@@ -21,6 +21,7 @@ import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogExt;
 import io.github.openground.land.common.entity.TaskDispatchParam;
 import io.github.openground.land.common.entity.TaskDispatchStepLog;
+import io.github.openground.land.config.TaskConfig;
 import io.github.openground.land.common.util.PWDDes;
 import io.github.openground.land.common.util.TaskDateUtil;
 import io.github.openground.land.core.ConditionJobThread;
@@ -84,6 +85,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Autowired
     private TaskDispatchStepLogMapper stepLogMapper;
+
+    @Autowired
+    private TaskConfig taskConfig;
 
     private boolean hasEndTask = false;
     private String endJobId = "";
@@ -846,9 +850,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             cpsGroupList.add(request.getCpsGroup().toUpperCase());
         } else {
             // 从 active_host 表查询所有活跃的 cpsGroup（去重）
-            // 活跃判定：ACTIVE_STATUS = 'ON' 或 ACTIVE_TIME 在最近 10 分钟内
+            // 活跃判定：ACTIVE_STATUS = 'ON' 或 ACTIVE_TIME 在最近 3 分钟内
             Map<String, Object> param = new HashMap<>();
-            param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - 10 * 60 * 1000));
+            param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - taskConfig.getActiveHostTimeoutSeconds() * 1000L));
             cpsGroupList = activeHostMapper.selectDistinctActiveCpsGroups(param);
         }
         Map<String, Object> result = new HashMap<>();

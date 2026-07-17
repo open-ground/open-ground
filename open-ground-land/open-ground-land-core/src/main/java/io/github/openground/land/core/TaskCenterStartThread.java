@@ -35,6 +35,9 @@ public class TaskCenterStartThread implements InitializingBean {
     @Value("${spring.application.name}")
     private String cpsGroup;
 
+    @Value("${server.port}")
+    private String serverPort;
+
     private int scanningPeriod = 30;// 扫描周期,默认30秒
 
     private int conditionScanningPeriod = 60;// 扫描周期,默认30秒
@@ -82,7 +85,11 @@ public class TaskCenterStartThread implements InitializingBean {
             String hostName = System.getProperty("user.name");
             TaskDispatchServiceUtil.setCpsHostIp(hostName);
         } else {
-            TaskDispatchServiceUtil.setCpsHostIp(Tools.getServerIp());
+            if(serverPort == null){
+                log.error("serverPort is null, please check your application.yml");
+                return;
+            }
+            TaskDispatchServiceUtil.setCpsHostIp(Tools.getServerIp() + ":" + serverPort);
         }
         // update by jack.zhang end
         TaskDispatchServiceUtil.setTaskConfig(task);
