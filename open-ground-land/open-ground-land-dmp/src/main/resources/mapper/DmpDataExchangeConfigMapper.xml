@@ -5,23 +5,26 @@
 
     <sql id="Base_Column_List">
         id, task_name, task_type, source_ds_id, target_ds_id, source_query,
-        source_file_path, target_table, target_file_path, file_delimiter,
+        source_table, source_file_path, target_table, target_file_path, file_delimiter,
         file_encoding, write_mode, batch_size, column_mappings, thread_count,
-        status, create_by, create_time, update_by, update_time
+        task_status, header_enabled, done_file_enabled, export_mode,
+        create_by, create_time, update_by, update_time
     </sql>
 
     <insert id="insert" parameterType="io.github.openground.land.dmp.entity.DmpDataExchangeConfig">
         INSERT INTO DMP_DATA_EXCHANGE_CONFIG (
             id, task_name, task_type, source_ds_id, target_ds_id,
-            source_query, source_file_path, target_table, target_file_path,
+            source_query, source_table, source_file_path, target_table, target_file_path,
             file_delimiter, file_encoding, write_mode, batch_size,
-            column_mappings, thread_count, status,
+            column_mappings, thread_count, task_status,
+            header_enabled, done_file_enabled, export_mode,
             create_by, create_time, update_by, update_time, del_flag
         ) VALUES (
             #{id}, #{taskName}, #{taskType}, #{sourceDsId}, #{targetDsId},
-            #{sourceQuery}, #{sourceFilePath}, #{targetTable}, #{targetFilePath},
+            #{sourceQuery}, #{sourceTable}, #{sourceFilePath}, #{targetTable}, #{targetFilePath},
             #{fileDelimiter}, #{fileEncoding}, #{writeMode}, #{batchSize},
-            #{columnMappings}, #{threadCount}, #{status},
+            #{columnMappings}, #{threadCount}, #{taskStatus},
+            #{headerEnabled}, #{doneFileEnabled}, #{exportMode},
             #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, '0'
         )
     </insert>
@@ -34,6 +37,7 @@
             <if test="sourceDsId != null">source_ds_id = #{sourceDsId},</if>
             <if test="targetDsId != null">target_ds_id = #{targetDsId},</if>
             <if test="sourceQuery != null">source_query = #{sourceQuery},</if>
+            <if test="sourceTable != null">source_table = #{sourceTable},</if>
             <if test="sourceFilePath != null">source_file_path = #{sourceFilePath},</if>
             <if test="targetTable != null">target_table = #{targetTable},</if>
             <if test="targetFilePath != null">target_file_path = #{targetFilePath},</if>
@@ -43,7 +47,10 @@
             <if test="batchSize != null">batch_size = #{batchSize},</if>
             <if test="columnMappings != null">column_mappings = #{columnMappings},</if>
             <if test="threadCount != null">thread_count = #{threadCount},</if>
-            <if test="status != null">status = #{status},</if>
+            <if test="taskStatus != null">task_status = #{taskStatus},</if>
+            <if test="headerEnabled != null">header_enabled = #{headerEnabled},</if>
+            <if test="doneFileEnabled != null">done_file_enabled = #{doneFileEnabled},</if>
+            <if test="exportMode != null">export_mode = #{exportMode},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = #{updateTime}
         </set>
@@ -72,8 +79,11 @@
             <if test="taskType != null and taskType != ''">
                 AND task_type = #{taskType}
             </if>
-            <if test="status != null and status != ''">
-                AND status = #{status}
+            <if test="taskStatus != null and taskStatus != ''">
+                AND task_status = #{taskStatus}
+            </if>
+            <if test="dsId != null">
+                AND (source_ds_id = #{dsId} OR target_ds_id = #{dsId})
             </if>
         </where>
         ORDER BY create_time DESC
@@ -89,8 +99,11 @@
             <if test="taskType != null and taskType != ''">
                 AND task_type = #{taskType}
             </if>
-            <if test="status != null and status != ''">
-                AND status = #{status}
+            <if test="taskStatus != null and taskStatus != ''">
+                AND task_status = #{taskStatus}
+            </if>
+            <if test="dsId != null">
+                AND (source_ds_id = #{dsId} OR target_ds_id = #{dsId})
             </if>
         </where>
     </select>

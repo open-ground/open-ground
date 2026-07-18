@@ -5,7 +5,7 @@ import io.github.openground.common.datasource.entity.SysDatasourceDO;
 
 import java.sql.Connection;
 import java.util.List;
-
+import java.util.Map;
 /**
  * 系统数据源 Service 接口
  *
@@ -61,18 +61,21 @@ public interface SysDatasourceService {
      * 查询数据源表列表（受表权限控制）
      *
      * <p>严格模式：未登录用户或无权限配置均返回空列表。</p>
+     * @return List of Map, 每项含 tableName-表名, remarks-表注释
      */
-    List<String> listTables(Long datasourceId);
+    List<Map<String, Object>> listTables(Long datasourceId);
 
     /**
      * 查询数据源全部表列表（跳过权限过滤，供管理界面使用）
+     *
+     * @return List of Map, 每项含 tableName-表名, remarks-表注释
      */
-    List<String> listAllTables(Long datasourceId);
+    List<Map<String, Object>> listAllTables(Long datasourceId);
 
     /**
      * 查询表字段列表
      */
-    List<java.util.Map<String, Object>> listTableColumns(Long datasourceId, String tableName);
+    List<Map<String, Object>> listTableColumns(Long datasourceId, String tableName);
 
     /**
      * 获取所有有效数据源（供 SysDatasourceProvider 使用）

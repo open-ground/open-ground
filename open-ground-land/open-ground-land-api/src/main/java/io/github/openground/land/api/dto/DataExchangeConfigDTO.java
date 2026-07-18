@@ -17,7 +17,7 @@ import lombok.EqualsAndHashCode;
 public class DataExchangeConfigDTO extends BaseRequest {
 
     @Schema(description = "主键")
-    private String id;
+    private Long id;
 
     @Schema(description = "任务名称")
     private String taskName;
@@ -33,6 +33,9 @@ public class DataExchangeConfigDTO extends BaseRequest {
 
     @Schema(description = "源端查询SQL（库→库/库→文件时使用）")
     private String sourceQuery;
+
+    @Schema(description = "源表名（库→库整表/条件导出时使用）")
+    private String sourceTable;
 
     @Schema(description = "源文件路径（文件→库时使用）")
     private String sourceFilePath;
@@ -62,7 +65,7 @@ public class DataExchangeConfigDTO extends BaseRequest {
     private Integer threadCount;
 
     @Schema(description = "状态：ENABLED / DISABLED")
-    private String status;
+    private String taskStatus;
 
     // 分页
     @Schema(description = "第几页")

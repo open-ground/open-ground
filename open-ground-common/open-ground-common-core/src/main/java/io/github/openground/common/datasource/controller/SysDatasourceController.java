@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,7 +102,7 @@ public class SysDatasourceController {
 
     @Operation(summary = "查询数据源表列表")
     @GetMapping("/{id}/tables")
-    public CommonResult<List<String>> listTables(@PathVariable Long id) {
+    public CommonResult<List<Map<String, Object>>> listTables(@PathVariable Long id) {
         return CommonResult.success(datasourceService.listTables(id));
     }
 
@@ -153,20 +154,19 @@ public class SysDatasourceController {
     @Operation(summary = "查询数据源表权限")
     @GetMapping("/{id}/alltables")
     public CommonResult<Map<String, Object>> alltables(@PathVariable Long id) {
-        if (tablePermissionService == null) {
-            return CommonResult.error("500", "表权限服务未启用");
-        }
-
-        // 获取全部表名（跳过权限过滤）
-        List<String> allTables = datasourceService.listAllTables(id);
-
-        // 获取已配置的权限
-        List<SysDatasourceTablePermissionDO> permissions = tablePermissionService.queryByDatasource(id);
-        Map<String, List<String>> roleTableMap = tablePermissionService.groupByRole(permissions);
+        // 获取全部表名（跳过权限过滤），含表名+注释
+        List<Map<String, Object>> allTables = datasourceService.listAllTables(id);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("allTables", allTables);
-        result.put("roleTableMap", roleTableMap);
+
+        // 权限数据在表权限服务可用时返回，否则返回空 Map
+        if (tablePermissionService != null) {
+            List<SysDatasourceTablePermissionDO> permissions = tablePermissionService.queryByDatasource(id);
+            result.put("roleTableMap", tablePermissionService.groupByRole(permissions));
+        } else {
+            result.put("roleTableMap", Collections.emptyMap());
+        }
         return CommonResult.success(result);
     }
 

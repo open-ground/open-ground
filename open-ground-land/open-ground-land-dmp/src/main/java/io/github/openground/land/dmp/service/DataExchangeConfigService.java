@@ -3,6 +3,7 @@ package io.github.openground.land.dmp.service;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.land.api.dto.DataExchangeConfigDTO;
 import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
 import io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper;
@@ -15,7 +16,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 数据交换配置服务
@@ -34,7 +34,7 @@ public class DataExchangeConfigService {
         Map<String, Object> param = new HashMap<>();
         param.put("taskName", request.getTaskName());
         param.put("taskType", request.getTaskType());
-        param.put("status", request.getStatus());
+        param.put("taskStatus", request.getTaskStatus());
 
         int pageIndex = request.getPageIndex() > 0 ? request.getPageIndex() : 1;
         int pageSize = request.getPageSize() > 0 ? request.getPageSize() : 10;
@@ -48,7 +48,7 @@ public class DataExchangeConfigService {
         return CommonResult.success(result);
     }
 
-    public CommonResult<?> getById(String id) {
+    public CommonResult<?> getById(Long id) {
         DmpDataExchangeConfig config = configMapper.selectById(id);
         if (config == null) {
             return CommonResult.error("1000", "配置不存在");
@@ -61,7 +61,7 @@ public class DataExchangeConfigService {
         BeanUtils.copyProperties(request, entity);
         Date now = new Date();
 
-        if (request.getId() != null && !request.getId().isEmpty()) {
+        if (request.getId() != null) {
             // 更新
             entity.setUpdateTime(now);
             if (request.getSysHead() != null) {
@@ -70,8 +70,8 @@ public class DataExchangeConfigService {
             configMapper.update(entity);
         } else {
             // 新增
-            entity.setId(UUID.randomUUID().toString());
-            entity.setStatus("ENABLED");
+            entity.setId(KeyGenerator.getInternalKey());
+            entity.setTaskStatus("ENABLED");
             entity.setCreateTime(now);
             entity.setUpdateTime(now);
             if (request.getSysHead() != null) {
@@ -83,7 +83,7 @@ public class DataExchangeConfigService {
         return CommonResult.success(null);
     }
 
-    public CommonResult<?> delete(String id) {
+    public CommonResult<?> delete(Long id) {
         configMapper.deleteById(id);
         return CommonResult.success(null);
     }

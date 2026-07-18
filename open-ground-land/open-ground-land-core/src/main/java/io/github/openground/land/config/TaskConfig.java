@@ -43,4 +43,13 @@ public class TaskConfig {
     /** 活跃主机心跳超时秒数（默认 180 秒 = 3 分钟） */
     private int activeHostTimeoutSeconds = 180;
 
+    /** 子任务线程池配置（数据交换、批处理、脚本等子任务共享） */
+    private StepPool stepPool = new StepPool();
+
+    @Data
+    public static class StepPool {
+        private int coreSize = 30;
+        private int maxSize = 100;
+        private int queueCapacity = 200;
+    }
 }

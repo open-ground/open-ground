@@ -8,6 +8,7 @@ import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.datasource.service.SysDatasourceService;
 import io.github.openground.common.datasource.service.SysDatasourceTablePermissionService;
+import io.github.openground.common.datasource.service.TableMetadataService;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.common.security.SecurityContextHolder;
 import io.github.openground.common.security.spi.UserDetails;
@@ -17,9 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
@@ -40,6 +39,9 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
 
     @Autowired(required = false)
     private SysDatasourceTablePermissionService tablePermissionService;
+
+    @Autowired
+    private TableMetadataService tableMetadataService;
 
     @Value("${ground.datasource.encrypt.key:ABCDEFG123456KEY}")
     private String encryptKey;
@@ -167,7 +169,7 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
     }
 
     @Override
-    public List<String> listTables(Long datasourceId) {
+    public List<Map<String, Object>> listTables(Long datasourceId) {
         // 严格模式：未获取到当前用户，不返回任何表
         UserDetails user = SecurityContextHolder.getCurrentUser();
         if (user == null || user.getRoleIds() == null || user.getRoleIds().isEmpty()) {
@@ -175,8 +177,8 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
             return Collections.emptyList();
         }
 
-        // 获取 JDBC 原始表列表
-        List<String> allTables = doListTables(datasourceId);
+        // 获取 JDBC 原始表列表（含表名+注释）
+        List<Map<String, Object>> allTables = doListTables(datasourceId);
 
         // 无表时直接返回
         if (allTables.isEmpty()) {
@@ -192,7 +194,7 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
                 log.debug("table permission: no permission config for datasource {}, returning empty", datasourceId);
                 return Collections.emptyList();
             }
-            allTables.retainAll(allowed);
+            allTables.removeIf(t -> !allowed.contains(t.get("tableName")));
         } else {
             // 无表权限服务 → 不返回任何表（严格模式）
             log.debug("table permission: no tablePermissionService available, returning empty");
@@ -203,31 +205,23 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
     }
 
     @Override
-    public List<String> listAllTables(Long datasourceId) {
+    public List<Map<String, Object>> listAllTables(Long datasourceId) {
         return doListTables(datasourceId);
     }
 
     /**
-     * 执行原始 JDBC 表列表查询（跳过权限过滤）
+     * 通过 DynamicJdbcTemplate + DbDialect 获取表列表（跳过权限过滤，多数据库兼容）
      */
-    private List<String> doListTables(Long datasourceId) {
+    private List<Map<String, Object>> doListTables(Long datasourceId) {
         SysDatasourceDO ds = datasourceMapper.selectById(datasourceId);
         if (ds == null) {
             throw new CommonException("514003", "数据源不存在");
         }
-        List<String> tables = new ArrayList<>();
-        try (Connection conn = getConnection(ds)) {
-            DatabaseMetaData meta = conn.getMetaData();
-            String catalog = resolveCatalog(conn, ds);
-            try (ResultSet rs = meta.getTables(catalog, null, "%", new String[]{"TABLE"})) {
-                while (rs.next()) {
-                    tables.add(rs.getString("TABLE_NAME"));
-                }
-            }
+        try {
+            return tableMetadataService.getTableList(ds.getDsName());
         } catch (Exception e) {
             throw new CommonException("518005", "读取表列表失败: " + e.getMessage());
         }
-        return tables;
     }
 
     @Override
@@ -236,37 +230,11 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
         if (ds == null) {
             throw new CommonException("514003", "数据源不存在");
         }
-        List<Map<String, Object>> columns = new ArrayList<>();
-        try (Connection conn = getConnection(ds)) {
-            DatabaseMetaData meta = conn.getMetaData();
-            String catalog = resolveCatalog(conn, ds);
-            try (ResultSet rs = meta.getColumns(catalog, null, tableName, "%")) {
-                while (rs.next()) {
-                    Map<String, Object> col = new LinkedHashMap<>();
-                    col.put("columnName", rs.getString("COLUMN_NAME"));
-                    col.put("typeName", rs.getString("TYPE_NAME"));
-                    col.put("columnSize", rs.getInt("COLUMN_SIZE"));
-                    col.put("decimalDigits", rs.getInt("DECIMAL_DIGITS"));
-                    col.put("nullable", rs.getInt("NULLABLE") == 1);
-                    col.put("defaultValue", rs.getString("COLUMN_DEF"));
-                    col.put("remarks", rs.getString("REMARKS"));
-                    columns.add(col);
-                }
-            }
-            // 标记主键
-            Set<String> pkSet = new HashSet<>();
-            try (ResultSet rs = meta.getPrimaryKeys(catalog, null, tableName)) {
-                while (rs.next()) {
-                    pkSet.add(rs.getString("COLUMN_NAME"));
-                }
-            }
-            for (Map<String, Object> col : columns) {
-                col.put("isPrimaryKey", pkSet.contains(col.get("columnName")));
-            }
+        try {
+            return  tableMetadataService.getTableColumns(ds.getDsName(), tableName);
         } catch (Exception e) {
             throw new CommonException("518005", "读取表字段失败: " + e.getMessage());
         }
-        return columns;
     }
 
     @Override
@@ -303,11 +271,4 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
         return sb.toString();
     }
 
-    private String resolveCatalog(Connection conn, SysDatasourceDO ds) throws SQLException {
-        String catalog = conn.getCatalog();
-        if (ds.getDatabaseName() != null && !ds.getDatabaseName().isEmpty()) {
-            catalog = ds.getDatabaseName();
-        }
-        return catalog;
-    }
 }

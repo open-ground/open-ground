@@ -16,6 +16,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @EnableConfigurationProperties(TaskConfig.class)
 public class TaskConfiguration {
 
+    private final TaskConfig taskConfig;
+
+    public TaskConfiguration(TaskConfig taskConfig) {
+        this.taskConfig = taskConfig;
+    }
+
     @Bean(initMethod = "init",destroyMethod = "destroy")
     public TaskCenterStartThread taskCenterStartThread() {
         log.info("TaskCenterStartThread init...");
@@ -30,12 +36,14 @@ public class TaskConfiguration {
 
     @Bean(name = "landTaskExecutor")
     public AsyncTaskExecutor threadPoolTaskExecutor() {
+        TaskConfig.StepPool pool = taskConfig.getStepPool();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(30);
-        executor.setMaxPoolSize(100);
-        executor.setQueueCapacity(200);
+        executor.setCorePoolSize(pool.getCoreSize());
+        executor.setMaxPoolSize(pool.getMaxSize());
+        executor.setQueueCapacity(pool.getQueueCapacity());
         executor.setThreadNamePrefix("STEP-WORK-");
         executor.initialize();
+        log.info("子任务线程池初始化: core={}, max={}, queue={}", pool.getCoreSize(), pool.getMaxSize(), pool.getQueueCapacity());
         return executor;
     }
 

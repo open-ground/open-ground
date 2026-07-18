@@ -20,9 +20,9 @@ public interface DmpDataExchangeConfigMapper {
 
     int update(DmpDataExchangeConfig config);
 
-    int deleteById(@Param("id") String id);
+    int deleteById(@Param("id") Long id);
 
-    DmpDataExchangeConfig selectById(@Param("id") String id);
+    DmpDataExchangeConfig selectById(@Param("id") Long id);
 
     List<DmpDataExchangeConfig> selectList(Map<String, Object> param);
 

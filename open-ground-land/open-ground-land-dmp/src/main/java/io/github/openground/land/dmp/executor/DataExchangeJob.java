@@ -1,12 +1,14 @@
 package io.github.openground.land.dmp.executor;
 
-import cn.hutool.core.util.StrUtil;
-import io.github.openground.land.api.job.JobEngine;
 import io.github.openground.land.api.domain.JobOut;
+import io.github.openground.land.api.job.JobEngine;
 import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskType;
 import io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -28,20 +30,43 @@ public class DataExchangeJob extends JobEngine {
     @Autowired
     private FileToDbExecutor fileToDbExecutor;
 
+    @Autowired
+    private DbToFileExecutor dbToFileExecutor;
+
+    @Autowired
+    private DbToDbExecutor dbToDbExecutor;
+
+    @Autowired
+    @Qualifier("landTaskExecutor")
+    private AsyncTaskExecutor landTaskExecutor;
+
     @Override
     public JobOut execute(Map<String, Object> params) {
         JobOut out = new JobOut();
         out.setSuccess(false);
 
         try {
-            // 从参数中获取配置ID
-            Object configIdObj = params.get("configId");
-            if (configIdObj == null) {
-                out.setMessage("参数 configId 不能为空");
+            // 批量执行：configIds 逗号分隔
+            Object configIdsObj = params.get("configIds");
+            if (configIdsObj != null) {
+                String[] ids = configIdsObj.toString().split(",");
+                for (String idStr : ids) {
+                    Long configId = Long.valueOf(idStr.trim());
+                    landTaskExecutor.submit(() -> executeSingle(configId));
+                }
+                out.setSuccess(true);
+                out.setMessage("已提交 " + ids.length + " 个任务");
                 return out;
             }
 
-            String configId = configIdObj.toString();
+            // 单任务执行（原逻辑）
+            Object configIdObj = params.get("configId");
+            if (configIdObj == null) {
+                out.setMessage("参数 configId 或 configIds 不能为空");
+                return out;
+            }
+
+            Long configId = Long.valueOf(configIdObj.toString());
             DmpDataExchangeConfig config = configMapper.selectById(configId);
             if (config == null) {
                 out.setMessage("配置不存在: " + configId);
@@ -51,10 +76,20 @@ public class DataExchangeJob extends JobEngine {
             String taskType = config.getTaskType();
             log.info("数据交换任务开始: type={}, configId={}", taskType, configId);
 
-            if ("FILE_TO_DB".equals(taskType)) {
-                int rows = fileToDbExecutor.execute(config);
+            if (TaskType.FILE_TO_DB.matches(taskType)) {
+                FileToDbExecutor.ExecuteResult result = fileToDbExecutor.execute(config);
+                out.setSuccess(result.getErrorRows() == 0);
+                out.setMessage("文件入库完成，共处理 " + result.getSuccessRows() + " 行"
+                        + (result.getErrorRows() > 0 ? "，失败=" + result.getErrorRows() + " 行" : ""));
+            } else if (TaskType.DB_TO_FILE.matches(taskType)) {
+                int rows = dbToFileExecutor.execute(config);
                 out.setSuccess(true);
-                out.setMessage("文件入库完成，共处理 " + rows + " 行");
+                out.setMessage("库导出文件完成，共导出 " + rows + " 行");
+            } else if (TaskType.DB_TO_DB.matches(taskType)) {
+                DbToDbExecutor.ExecuteResult result = dbToDbExecutor.execute(config);
+                out.setSuccess(result.getErrorRows() == 0);
+                out.setMessage("库→库同步完成，共处理 " + result.getSuccessRows() + " 行"
+                        + (result.getErrorRows() > 0 ? "，失败=" + result.getErrorRows() + " 行" : ""));
             } else {
                 out.setMessage("暂不支持的任务类型: " + taskType);
             }
@@ -65,5 +100,32 @@ public class DataExchangeJob extends JobEngine {
         }
 
         return out;
+    }
+
+    private void executeSingle(Long configId) {
+        try {
+            DmpDataExchangeConfig config = configMapper.selectById(configId);
+            if (config == null) {
+                log.warn("配置不存在: {}", configId);
+                return;
+            }
+            String taskType = config.getTaskType();
+            log.info("数据交换任务开始: type={}, configId={}", taskType, configId);
+
+            if (TaskType.FILE_TO_DB.matches(taskType)) {
+                FileToDbExecutor.ExecuteResult result = fileToDbExecutor.execute(config);
+                log.info("文件入库完成: configId={}, 成功={}, 失败={}", configId, result.getSuccessRows(), result.getErrorRows());
+            } else if (TaskType.DB_TO_FILE.matches(taskType)) {
+                int rows = dbToFileExecutor.execute(config);
+                log.info("库导出文件完成: configId={}, 行数={}", configId, rows);
+            } else if (TaskType.DB_TO_DB.matches(taskType)) {
+                DbToDbExecutor.ExecuteResult result = dbToDbExecutor.execute(config);
+                log.info("库→库同步完成: configId={}, 成功={}, 失败={}", configId, result.getSuccessRows(), result.getErrorRows());
+            } else {
+                log.warn("暂不支持的任务类型: configId={}, type={}", configId, taskType);
+            }
+        } catch (Exception e) {
+            log.error("数据交换任务执行异常: configId={}", configId, e);
+        }
     }
 }
