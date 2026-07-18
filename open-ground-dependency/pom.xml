@@ -158,6 +158,11 @@
                 <artifactId>open-ground-land-dispatch</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-dmp</artifactId>
+                <version>${revision}</version>
+            </dependency>
 
             <!-- Starter 模块 -->
             <dependency>

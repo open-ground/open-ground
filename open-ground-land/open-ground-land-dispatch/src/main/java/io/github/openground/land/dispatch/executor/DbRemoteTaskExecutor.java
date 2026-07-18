@@ -1,7 +1,10 @@
 package io.github.openground.land.dispatch.executor;
 
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.base.interceptor.RestTemplateRequestInterceptor;
 import io.github.openground.land.api.dto.TaskCenterRequest;
+import io.github.openground.land.api.dto.TaskMonitorRequest;
+import io.github.openground.land.api.dto.TaskSegmentRequest;
 import io.github.openground.land.api.executor.RemoteTaskExecutor;
 import io.github.openground.land.common.constants.ErrorCode;
 import io.github.openground.land.dispatch.discovery.DbServiceDiscovery;
@@ -12,9 +15,11 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,6 +51,11 @@ public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
 
     @PostConstruct
     public void init() {
+        // 配置拦截器：添加 encrypt=false 请求头，告知服务端内部请求报文不用解密
+        List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
+        interceptors.add(new RestTemplateRequestInterceptor());
+        this.restTemplate.setInterceptors(interceptors);
+        
         log.info("RemoteTaskExecutor 初始化完成: [DbRemoteTaskExecutor]");
     }
 
@@ -74,11 +84,14 @@ public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
             targetHost = hosts.get(index);
         }
 
-        // 3. 构建完整 URL
+        // 3. 清空 cpsGroup，防止目标实例收到后再次转发形成死循环
+        clearCpsGroup(request);
+
+        // 4. 构建完整 URL
         String url = "http://" + targetHost + BASE_PATH + action;
         log.info("RemoteTaskExecutor 转发: cpsGroup={}, target={}, action={}", cpsGroup, targetHost, action);
 
-        // 4. HTTP POST 转发
+        // 5. HTTP POST 转发
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -102,7 +115,30 @@ public class DbRemoteTaskExecutor implements RemoteTaskExecutor {
             if (hostIp != null && !hostIp.isEmpty()) {
                 return hostIp;
             }
+        } else if (request instanceof TaskMonitorRequest) {
+            String serviceUrl = ((TaskMonitorRequest) request).getServiceUrl();
+            if (serviceUrl != null && !serviceUrl.isEmpty()) {
+                try {
+                    // 从 http://ip:port 中提取
+                    return new java.net.URL(serviceUrl).getHost() + ":" + new java.net.URL(serviceUrl).getPort();
+                } catch (Exception e) {
+                    log.warn("解析 serviceUrl 异常: {}", serviceUrl, e);
+                }
+            }
         }
         return null;
+    }
+
+    /**
+     * 清空请求中的 cpsGroup，防止目标实例二次转发
+     */
+    private void clearCpsGroup(Object request) {
+        if (request instanceof TaskCenterRequest) {
+            ((TaskCenterRequest) request).setCpsGroup(null);
+        } else if (request instanceof TaskSegmentRequest) {
+            ((TaskSegmentRequest) request).setCpsGroup(null);
+        } else if (request instanceof TaskMonitorRequest) {
+            ((TaskMonitorRequest) request).setCpsGroup(null);
+        }
     }
 }

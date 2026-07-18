@@ -39,6 +39,9 @@
             <if test="cpsGroup != null and cpsGroup != ''">
                 AND CPS_GROUP = #{cpsGroup}
             </if>
+            <if test="activeTimeThreshold != null">
+                AND ACTIVE_TIME > #{activeTimeThreshold}
+            </if>
         </where>
         ORDER BY ACTIVE_TIME DESC
     </select>

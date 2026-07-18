@@ -3,27 +3,30 @@ package io.github.openground.land.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.druid.stat.DruidStatManagerFacade;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.base.utils.MapUtil;
 import io.github.openground.base.utils.SpringUtil;
+import io.github.openground.land.api.domain.StepSegmentExeInfo;
 import io.github.openground.land.api.dto.TaskCenterRequest;
+import io.github.openground.land.api.dto.TaskDashboardResponse;
 import io.github.openground.land.api.dto.TaskDispatchParamRequest;
 import io.github.openground.land.api.dto.TaskMonitorRequest;
 import io.github.openground.land.api.dto.TaskMonitorResponse;
-import io.github.openground.land.api.dto.TaskDashboardResponse;
 import io.github.openground.land.api.dto.TaskSegmentRequest;
+import io.github.openground.land.api.executor.RemoteTaskExecutor;
 import io.github.openground.land.common.constants.ErrorCode;
-import io.github.openground.land.api.domain.StepSegmentExeInfo;
 import io.github.openground.land.common.entity.ScheduleDomain;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogExt;
 import io.github.openground.land.common.entity.TaskDispatchParam;
 import io.github.openground.land.common.entity.TaskDispatchStepLog;
-import io.github.openground.land.config.TaskConfig;
 import io.github.openground.land.common.util.PWDDes;
 import io.github.openground.land.common.util.TaskDateUtil;
+import io.github.openground.land.config.TaskConfig;
 import io.github.openground.land.core.ConditionJobThread;
 import io.github.openground.land.core.ExecuteJobThread;
 import io.github.openground.land.core.StartTaskThread;
@@ -38,13 +41,12 @@ import io.github.openground.land.service.TaskCenterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -55,10 +57,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 
 /**
  * 任务中心服务实现
@@ -88,6 +86,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Autowired
     private TaskConfig taskConfig;
+
+    @Autowired(required = false)
+    private RemoteTaskExecutor remoteTaskExecutor;
 
     private boolean hasEndTask = false;
     private String endJobId = "";
@@ -143,7 +144,14 @@ public class TaskCenterServiceImpl implements TaskCenterService {
         } else {
             param.put("cpsGroup", request.getCpsGroup());
         }
-        List<Map<String, Object>> hostList = activeHostMapper.hostListlistPage(param);
+        param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - taskConfig.getActiveHostTimeoutSeconds() * 1000L));
+        List<Map<String, Object>> list = activeHostMapper.hostListlistPage(param);
+        // map key 转大写
+        List<Map<String, Object>> hostList = new ArrayList<>();
+        for (Map<String, Object> stringObjectMap : list) {
+            hostList.add(MapUtil.mapKeyUpperCase(stringObjectMap));
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("resultlist", resultList);
         result.put("totalrecord", page.getTotal());
@@ -158,6 +166,8 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             }
         }
         allTaskMap.clear();
+        // 获取可用实例列表
+        result.put("hostList", hostList);
         return CommonResult.success(result);
     }
 
@@ -907,8 +917,6 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     // ==================== 任务监控 ====================
 
-    private final RestTemplate restTemplate = new RestTemplate();
-
     @Override
     public CommonResult<?> getCpsServiceList(TaskMonitorRequest request) {
         Map<String, Object> param = new HashMap<>();
@@ -930,20 +938,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Override
     public CommonResult<?> threadPoolMonitor(TaskMonitorRequest request) {
-        String serviceUrl = request.getServiceUrl();
-        if (serviceUrl != null && !serviceUrl.isEmpty()) {
-            // 转发到目标实例
-            try {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                HttpEntity<TaskMonitorRequest> entity = new HttpEntity<>(request, headers);
-                ResponseEntity<TaskMonitorResponse> response = restTemplate.postForEntity(
-                        serviceUrl + "/task/taskcenter/threadPoolMonitor", entity, TaskMonitorResponse.class);
-                return CommonResult.success(response.getBody());
-            } catch (Exception e) {
-                log.error("远程调用 threadPoolMonitor 异常: {}", serviceUrl, e);
-                return CommonResult.error(ErrorCode.FAIL, "远程调用失败: " + e.getMessage());
-            }
+        if (remoteTaskExecutor != null && request.getCpsGroup() != null && !request.getCpsGroup().isEmpty()) {
+            // 复用 RemoteTaskExecutor 转发（支持负载均衡 + 指定 hostIp + 防止二次转发）
+            return remoteTaskExecutor.execute(request.getCpsGroup(), "/threadPoolMonitor", request);
         }
         // 本地执行
         TaskMonitorResponse out = new TaskMonitorResponse();
@@ -990,6 +987,35 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             }
         }
         out.setThreadList(threadList);
+
+        // Druid 数据源监控
+        try {
+            List<Map<String, Object>> dataSourceStatDataList = DruidStatManagerFacade.getInstance().getDataSourceStatDataList();
+            if (dataSourceStatDataList != null && !dataSourceStatDataList.isEmpty()) {
+                String params = "UserName:用户名,DriverClassName:驱动类名,TestOnBorrow:获取连接时检测,TestWhileIdle:空闲时检测," +
+                        "TestOnReturn:连接放回连接池时检测,InitialSize:初始化连接大小,MinIdle:最小空闲连接数,MaxActive:最大连接数," +
+                        "DefaultAutoCommit:默认autocommit设置,KeepAlive:KeepAlive,MaxWait:获取链接最大等待时间,WaitThreadCount:等待线程数量," +
+                        "PoolingCount:池中连接数,PoolingPeak:池中连接数峰值,ActiveCount:活跃连接数,ActivePeak:活跃连接数峰值," +
+                        "PhysicalConnectCount:物理连接打开次数,PhysicalCloseCount:物理关闭数量";
+                String[] split = params.split(",");
+                List<Map<String, Object>> list = new ArrayList<>();
+                for (String s : split) {
+                    String[] one = s.split(":");
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("label", one[0]);
+                    m.put("name", one[1]);
+                    m.put("value", dataSourceStatDataList.get(0).get(one[0]));
+                    if (dataSourceStatDataList.size() >= 2) {
+                        m.put("value2", dataSourceStatDataList.get(1).get(one[0]));
+                    }
+                    list.add(m);
+                }
+                out.setDataSourceInfo(list);
+            }
+        } catch (Exception e) {
+            log.warn("获取Druid数据源监控信息异常", e);
+        }
+
         out.setCurrentTime(TaskDateUtil.getMachingCurrentTime());
         return CommonResult.success(out);
     }

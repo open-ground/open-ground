@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper">
+
+    <sql id="Base_Column_List">
+        id, task_name, task_type, source_ds_id, target_ds_id, source_query,
+        source_file_path, target_table, target_file_path, file_delimiter,
+        file_encoding, write_mode, batch_size, column_mappings, thread_count,
+        status, create_by, create_time, update_by, update_time
+    </sql>
+
+    <insert id="insert" parameterType="io.github.openground.land.dmp.entity.DmpDataExchangeConfig">
+        INSERT INTO DMP_DATA_EXCHANGE_CONFIG (
+            id, task_name, task_type, source_ds_id, target_ds_id,
+            source_query, source_file_path, target_table, target_file_path,
+            file_delimiter, file_encoding, write_mode, batch_size,
+            column_mappings, thread_count, status,
+            create_by, create_time, update_by, update_time, del_flag
+        ) VALUES (
+            #{id}, #{taskName}, #{taskType}, #{sourceDsId}, #{targetDsId},
+            #{sourceQuery}, #{sourceFilePath}, #{targetTable}, #{targetFilePath},
+            #{fileDelimiter}, #{fileEncoding}, #{writeMode}, #{batchSize},
+            #{columnMappings}, #{threadCount}, #{status},
+            #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, '0'
+        )
+    </insert>
+
+    <update id="update" parameterType="io.github.openground.land.dmp.entity.DmpDataExchangeConfig">
+        UPDATE DMP_DATA_EXCHANGE_CONFIG
+        <set>
+            <if test="taskName != null">task_name = #{taskName},</if>
+            <if test="taskType != null">task_type = #{taskType},</if>
+            <if test="sourceDsId != null">source_ds_id = #{sourceDsId},</if>
+            <if test="targetDsId != null">target_ds_id = #{targetDsId},</if>
+            <if test="sourceQuery != null">source_query = #{sourceQuery},</if>
+            <if test="sourceFilePath != null">source_file_path = #{sourceFilePath},</if>
+            <if test="targetTable != null">target_table = #{targetTable},</if>
+            <if test="targetFilePath != null">target_file_path = #{targetFilePath},</if>
+            <if test="fileDelimiter != null">file_delimiter = #{fileDelimiter},</if>
+            <if test="fileEncoding != null">file_encoding = #{fileEncoding},</if>
+            <if test="writeMode != null">write_mode = #{writeMode},</if>
+            <if test="batchSize != null">batch_size = #{batchSize},</if>
+            <if test="columnMappings != null">column_mappings = #{columnMappings},</if>
+            <if test="threadCount != null">thread_count = #{threadCount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id} AND del_flag = '0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE DMP_DATA_EXCHANGE_CONFIG SET del_flag = '1'
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="io.github.openground.land.dmp.entity.DmpDataExchangeConfig">
+        SELECT <include refid="Base_Column_List"/>
+        FROM DMP_DATA_EXCHANGE_CONFIG
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectList" resultType="io.github.openground.land.dmp.entity.DmpDataExchangeConfig">
+        SELECT <include refid="Base_Column_List"/>
+        FROM DMP_DATA_EXCHANGE_CONFIG
+        <where>
+            del_flag = '0'
+            <if test="taskName != null and taskName != ''">
+                AND task_name LIKE CONCAT('%', #{taskName}, '%')
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(*) FROM DMP_DATA_EXCHANGE_CONFIG
+        <where>
+            del_flag = '0'
+            <if test="taskName != null and taskName != ''">
+                AND task_name LIKE CONCAT('%', #{taskName}, '%')
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+</mapper>

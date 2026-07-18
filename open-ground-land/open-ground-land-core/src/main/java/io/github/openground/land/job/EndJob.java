@@ -48,7 +48,7 @@ public class EndJob extends JobEngine {
         String curCpsGroup = TaskDispatchServiceUtil.getCpsGroup();
 
         String sysEodDate = TaskDateUtil.getSysEodDate(curCpsGroup);
-        Date nextday = TaskDateUtil.tomorrow(TaskDateUtil.parseDate(sysEodDate));
+        Date nextday = TaskDateUtil.tomorrow(CommonUtil.getString2Date(sysEodDate, CommonUtil.yyyyMMdd));
         String nextEodDate = TaskDateUtil.formatDate(nextday);
 
         if (param.containsKey("isAutoExe")) {

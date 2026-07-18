@@ -43,6 +43,6 @@
   <logger name="io.github.openground.common.log.aspect" level="debug"/>
   
   <!-- MyBatis SQL 日志 -->
-  <logger name="io.github.openground.land.mapper" level="debug"/>
+<!--  <logger name="io.github.openground.land.mapper" level="debug"/>-->
 
 </configuration>

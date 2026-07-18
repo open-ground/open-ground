@@ -20,6 +20,7 @@
         <module>open-ground-land-api</module>
         <module>open-ground-land-core</module>
         <module>open-ground-land-dispatch</module>
+        <module>open-ground-land-dmp</module>
     </modules>
 
     <properties>
@@ -49,6 +50,11 @@
             <dependency>
                 <groupId>io.github.open-ground</groupId>
                 <artifactId>open-ground-land-dispatch</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-land-dmp</artifactId>
                 <version>${revision}</version>
             </dependency>
 

@@ -186,8 +186,7 @@ public class TaskDateUtil implements ApplicationContextAware {
         if (yyyymmddhhmmss == null || yyyymmddhhmmss.length() == 0)
             return null;
         if (yyyymmddhhmmss.indexOf("-") < 0 && yyyymmddhhmmss.indexOf(".") < 0) {
-            throw new IllegalArgumentException(
-                    "日期格式必须为yyyy\"-\"MM\".\"ddhhmmss");
+            throw new IllegalArgumentException("日期格式必须为yyyyMMddhhmmss");
         }
 
         SimpleDateFormat formatter = new SimpleDateFormat(dateFormat);
