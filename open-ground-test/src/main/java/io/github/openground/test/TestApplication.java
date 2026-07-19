@@ -1,5 +1,6 @@
 package io.github.openground.test;
 
+import io.github.openground.common.log.config.EnableOptLog;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author open-ground
  */
 @SpringBootApplication
+@EnableOptLog
 public class TestApplication {
     public static void main(String[] args) {
         System.setProperty("nacos.logging.default.config.enabled", "false");

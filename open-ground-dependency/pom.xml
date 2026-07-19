@@ -195,6 +195,12 @@
                 <version>${revision}</version>
                 <type>pom</type>
             </dependency>
+            <dependency>
+                <groupId>io.github.open-ground</groupId>
+                <artifactId>open-ground-starter-land</artifactId>
+                <version>${revision}</version>
+                <type>pom</type>
+            </dependency>
 
             <!-- Lombok -->
             <dependency>

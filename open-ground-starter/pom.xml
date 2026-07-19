@@ -21,5 +21,6 @@
         <module>open-ground-starter-security</module>
         <module>open-ground-starter-springcloud</module>
         <module>open-ground-starter-all</module>
+        <module>open-ground-starter-land</module>
     </modules>
 </project>

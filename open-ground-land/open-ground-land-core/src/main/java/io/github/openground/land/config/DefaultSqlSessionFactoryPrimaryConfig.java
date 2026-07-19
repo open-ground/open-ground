@@ -31,15 +31,13 @@ public class DefaultSqlSessionFactoryPrimaryConfig {
 
     @Bean
     @Primary
-    public SqlSessionFactory primaryDefaultSqlSessionFactory(
-            @Qualifier("sqlSessionFactory") SqlSessionFactory defaultFactory) {
+    public SqlSessionFactory primaryDefaultSqlSessionFactory(@Qualifier("sqlSessionFactory") SqlSessionFactory defaultFactory) {
         return defaultFactory;
     }
 
     @Bean
     @Primary
-    public SqlSessionTemplate primaryDefaultSqlSessionTemplate(
-            @Qualifier("sqlSessionTemplate") SqlSessionTemplate defaultTemplate) {
+    public SqlSessionTemplate primaryDefaultSqlSessionTemplate(@Qualifier("sqlSessionTemplate") SqlSessionTemplate defaultTemplate) {
         return defaultTemplate;
     }
 }
