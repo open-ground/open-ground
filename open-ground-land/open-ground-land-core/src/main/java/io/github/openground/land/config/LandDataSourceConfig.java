@@ -6,6 +6,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -51,6 +52,7 @@ public class LandDataSourceConfig {
      * <p>从 ground.land.datasource 前缀读取配置，Druid 连接池</p>
      */
     @Bean("landDataSource")
+    // @ConditionalOnMissingBean(name = "landDataSource")
     @ConfigurationProperties(prefix = "ground.land.datasource")
     public DataSource landDataSource() {
         log.info("初始化调度框架数据源: ground.land.datasource");
@@ -62,11 +64,20 @@ public class LandDataSourceConfig {
      * <p>扫描 classpath:mapper/land/*.xml 下的框架 Mapper XML</p>
      */
     @Bean("landSqlSessionFactory")
-    public SqlSessionFactory landSqlSessionFactory(javax.sql.DataSource landDataSource) throws Exception {
+    // @ConditionalOnMissingBean(name = "landSqlSessionFactory")
+    public SqlSessionFactory landSqlSessionFactory(@Qualifier("landDataSource") javax.sql.DataSource landDataSource) throws Exception {
         SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
         factory.setDataSource(landDataSource);
-        factory.setMapperLocations(new PathMatchingResourcePatternResolver()
-                .getResources("classpath:mapper/land/*.xml"));
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        // land-core 模块的 Mapper XML（classpath:mapper/land/*.xml）
+        org.springframework.core.io.Resource[] landXmls = resolver.getResources("classpath*:mapper/land/*.xml");
+        // DMP 模块的 Mapper XML（classpath:mapper/Dmp*.xml）
+        org.springframework.core.io.Resource[] dmpXmls = resolver.getResources("classpath*:mapper/Dmp*.xml");
+        // 合并
+        org.springframework.core.io.Resource[] all = new org.springframework.core.io.Resource[landXmls.length + dmpXmls.length];
+        System.arraycopy(landXmls, 0, all, 0, landXmls.length);
+        System.arraycopy(dmpXmls, 0, all, landXmls.length, dmpXmls.length);
+        factory.setMapperLocations(all);
         log.info("初始化调度框架 SqlSessionFactory");
         return factory.getObject();
     }
@@ -75,7 +86,8 @@ public class LandDataSourceConfig {
      * 框架 SqlSessionTemplate
      */
     @Bean("landSqlSessionTemplate")
-    public SqlSessionTemplate landSqlSessionTemplate(SqlSessionFactory landSqlSessionFactory) {
+   // @ConditionalOnMissingBean(name = "landSqlSessionTemplate")
+    public SqlSessionTemplate landSqlSessionTemplate(@Qualifier("landSqlSessionFactory") SqlSessionFactory landSqlSessionFactory) {
         return new SqlSessionTemplate(landSqlSessionFactory);
     }
 
@@ -84,7 +96,8 @@ public class LandDataSourceConfig {
      * <p>保留以备将来需要编程式事务时使用，当前调度引擎不需要事务</p>
      */
     @Bean("landTransactionManager")
-    public DataSourceTransactionManager landTransactionManager(javax.sql.DataSource landDataSource) {
+    // @ConditionalOnMissingBean(name = "landTransactionManager")
+    public DataSourceTransactionManager landTransactionManager(@Qualifier("landDataSource") javax.sql.DataSource landDataSource) {
         return new DataSourceTransactionManager(landDataSource);
     }
 }

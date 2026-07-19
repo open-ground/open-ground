@@ -4,6 +4,7 @@ import io.github.openground.common.jdbc.dialect.DbDialectRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,6 +31,10 @@ import java.util.List;
  */
 @Slf4j
 @AutoConfiguration
+// 必须在 MybatisPlusAutoConfiguration 之前加载，确保 RoutingDataSource（@Primary）
+// 先于 MybatisPlus 主 SqlSessionFactory 创建，否则 MybatisPlus 因多个 DataSource 无 @Primary 而报错。
+// MybatisPlus 3.x 的自动配置类名稳定，若未来升级大版本需同步更新此类名。
+@AutoConfigureBefore(name = "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration")
 @EnableConfigurationProperties({DynamicDataSourceProperties.class, DruidProperties.class})
 @ComponentScan(basePackages = "io.github.openground.common.jdbc.dialect")
 public class DynamicDataSourceAutoConfiguration {
@@ -87,11 +92,36 @@ public class DynamicDataSourceAutoConfiguration {
             DataSourceProviderRegistry registry,
             DruidProperties druidProperties,
             List<DataSource> dataSources) {
-        DataSource primary = dataSources.isEmpty() ? null : dataSources.get(0);
+        // 过滤掉 RoutingDataSource 自身，避免 primaryDataSource 指向 RoutingDataSource 形成递归
+        DataSource primary = dataSources.stream()
+                .filter(ds -> !(ds instanceof RoutingDataSource))
+                .findFirst()
+                .orElse(null);
         log.info("动态数据源管理器已启用（Druid 连接池），共 {} 个动态数据源: {}",
                 registry.getDataSourceNames().size(),
                 registry.getDataSourceNames().isEmpty() ? "无" : registry.getDataSourceNames());
         return new DynamicDataSourceManager(registry, druidProperties, primary);
+    }
+
+    /**
+     * 路由数据源 - MyBatis 动态多数据源的核心
+     *
+     * <p>作为 {@code @Primary} 数据源，MyBatis-Plus 主 SqlSessionFactory 和 JdbcTemplate
+     * 都会持有它。未 push dsName 时回退到默认数据源（Spring 主数据源），
+     * push 后路由到指定动态数据源。
+     *
+     * @param dataSourceManager 动态数据源管理器
+     * @param primaryDataSource Spring 主数据源（作为默认回退）
+     * @return 路由数据源
+     */
+    @Bean
+    @org.springframework.context.annotation.Primary
+    @ConditionalOnMissingBean(RoutingDataSource.class)
+    public RoutingDataSource routingDataSource(@org.springframework.beans.factory.annotation.Qualifier("dataSource") DataSource primaryDataSource) {
+        RoutingDataSource routingDs = new RoutingDataSource();
+        routingDs.setDefaultTargetDataSource(primaryDataSource);
+        log.info("路由数据源已启用（@Primary），默认回退: Spring 主数据源 (dataSource)");
+        return routingDs;
     }
 
     /**
@@ -102,9 +132,13 @@ public class DynamicDataSourceAutoConfiguration {
     @ConditionalOnBean(SqlSessionFactory.class)
     public DynamicSqlSessionFactoryManager dynamicSqlSessionFactoryManager(
             DynamicDataSourceManager dataSourceManager,
-            SqlSessionFactory primarySqlSessionFactory) {
-        log.info("动态数据源 SqlSessionFactory 管理器已启用（复用主 SqlSessionFactory 配置）");
-        return new DynamicSqlSessionFactoryManager(dataSourceManager, primarySqlSessionFactory);
+            SqlSessionFactory primarySqlSessionFactory,
+            RoutingDataSource routingDataSource) {
+        // 延迟注入 DynamicDataSourceManager 到 RoutingDataSource，打破循环依赖
+        // 此处 DynamicDataSourceManager 和 RoutingDataSource 都已就绪，安全注入
+        routingDataSource.setDataSourceManager(dataSourceManager);
+        log.info("动态数据源 SqlSessionFactory 管理器已启用（路由数据源模式，复用主 SqlSessionFactory）");
+        return new DynamicSqlSessionFactoryManager(dataSourceManager, primarySqlSessionFactory, routingDataSource);
     }
 
     /**

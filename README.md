@@ -142,6 +142,21 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
 
   在指定数据源上执行 MyBatis Mapper 操作，复用主 SqlSessionFactory 配置（Mapper XML、类型别名、插件），仅替换 DataSource。
 
+  <details>
+  <summary>🔧 设计理念：路由数据源方案</summary>
+
+  open-ground 的 MyBatis 动态多数据源采用 **Spring 官方的 `AbstractRoutingDataSource` 路由模式**，而非"每个数据源一个独立 SqlSessionFactory"。核心组件：
+
+  - **`RoutingDataSource`** - 继承 `AbstractRoutingDataSource`，作为 `@Primary` 数据源，被主 SqlSessionFactory 和 JdbcTemplate 持有。通过 ThreadLocal 栈传递 dsName，`getConnection()` 时路由到真实数据源。
+  - **`DynamicSqlSessionFactoryManager`** - 持有主 SqlSessionFactory 和 RoutingDataSource，统一返回主工厂（零重建、零污染）。
+  - **`DynamicJdbcTemplate`** - MyBatis 方法内部自动管理 `routingDataSource.push(dsName) / pop()`，对调用方完全透明。
+
+  **为什么不采用"每数据源一个 SqlSessionFactory"？** MyBatis 执行 SQL 时连接由 `Configuration.getEnvironment().getDataSource()` 决定。若为每个数据源创建独立 SqlSessionFactory，在 MyBatis-Plus 场景下需要重建 Configuration/GlobalConfig/TableInfo/拦截器等全套配置，代价极高且易遗漏插件（分页、逻辑删除、字段填充等）。路由数据源方案完全复用主 SqlSessionFactory，零重建。
+
+  **嵌套调用支持**：RoutingDataSource 用栈式 ThreadLocal 设计，支持嵌套数据源切换（如 dsName=A 中调用 dsName=B，执行完毕后恢复 A）。`pop()` 在 finally 块中调用，保证线程池场景下不泄漏。
+
+  </details>
+
   ```java
   // 方式1：Mapper 回调（推荐，类型安全，最简洁）
   User user = dynamicJdbcTemplate.executeWithMapper("business_db",
@@ -221,8 +236,19 @@ Spring Boot 自动配置模块，提供 SPI 接口的默认实现：
   #### 与其他数据源共存
 
   多数据源组件与以下数据源完全隔离，互不影响：
-  - **Spring Boot 主数据源**（`spring.datasource`）— 通过 `@Primary` 自动装配，无 dsName 时兜底
-  - **land 框架数据源**（`ground.land.datasource`）— `LandDataSourceConfig` 独立创建，不走 DynamicDataSourceManager
+  - **Spring Boot 主数据源**（`spring.datasource`）- 作为 `RoutingDataSource` 的默认回退目标，未指定 dsName 时兜底
+  - **land 框架数据源**（`ground.land.datasource`）- `LandDataSourceConfig` 独立创建，通过 `@Qualifier` 显式绑定 `landSqlSessionFactory`，不走 DynamicDataSourceManager
+
+  <details>
+  <summary>🔧 @Primary 数据源说明</summary>
+
+  当 `DynamicDataSourceAutoConfiguration` 启用时，`RoutingDataSource` 被标记为 `@Primary` DataSource。它包装了 Spring 主数据源作为默认回退，因此：
+  - 未 push dsName 时，所有走 `@Primary` 的组件（JdbcTemplate、MyBatis-Plus 主 SqlSessionFactory）连接的是 Spring 主数据源，行为不变
+  - push dsName 后，MyBatis 动态多数据源方法路由到指定数据源
+
+  land 模块的 `LandDataSourcePrimaryConfig` 通过 `@ConditionalOnMissingBean(RoutingDataSource.class)` 自动退让，避免双 `@Primary` 冲突。
+
+  </details>
 
   </details>
 

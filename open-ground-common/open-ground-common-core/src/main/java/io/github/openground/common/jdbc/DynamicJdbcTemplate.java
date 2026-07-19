@@ -45,6 +45,7 @@ public class DynamicJdbcTemplate {
     private final DynamicDataSourceManager dataSourceManager;
     private final DbDialectRegistry dbDialectRegistry;
     private final DynamicSqlSessionFactoryManager sqlSessionFactoryManager;
+    private final RoutingDataSource routingDataSource;
 
     /**
      * 操作类型枚举（兼容 PubJdbcComponent.OperationType）
@@ -57,6 +58,7 @@ public class DynamicJdbcTemplate {
         this.dataSourceManager = dataSourceManager;
         this.dbDialectRegistry = dbDialectRegistry;
         this.sqlSessionFactoryManager = null;
+        this.routingDataSource = null;
     }
 
     /**
@@ -67,6 +69,7 @@ public class DynamicJdbcTemplate {
         this.dataSourceManager = dataSourceManager;
         this.dbDialectRegistry = dbDialectRegistry;
         this.sqlSessionFactoryManager = sqlSessionFactoryManager;
+        this.routingDataSource = sqlSessionFactoryManager != null ? sqlSessionFactoryManager.getRoutingDataSource() : null;
     }
 
     /**
@@ -657,8 +660,11 @@ public class DynamicJdbcTemplate {
      */
     public <T> T executeInDataSource(String dsName, SqlSessionCallback<T> action) {
         SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        routingDataSource.push(dsName);
         try (SqlSession session = factory.openSession(true)) {
             return action.doInSqlSession(session);
+        } finally {
+            routingDataSource.pop();
         }
     }
 
@@ -677,6 +683,7 @@ public class DynamicJdbcTemplate {
      */
     public <T> T executeInDataSourceTransactional(String dsName, SqlSessionCallback<T> action) {
         SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        routingDataSource.push(dsName);
         SqlSession session = factory.openSession(false);
         try {
             T result = action.doInSqlSession(session);
@@ -687,6 +694,7 @@ public class DynamicJdbcTemplate {
             throw e;
         } finally {
             session.close();
+            routingDataSource.pop();
         }
     }
 
@@ -717,22 +725,29 @@ public class DynamicJdbcTemplate {
     /**
      * 在指定数据源上获取 Mapper 代理
      *
-     * <p>注意：返回的 Mapper 代理绑定到一个已关闭的 SqlSession，
-     * 仅适用于 MyBatis 的 Mapper 代理机制（延迟执行）。
-     * 建议优先使用 {@link #executeWithMapper}。
+     * <p><b>不推荐使用</b>：返回的 Mapper 代理绑定到一个已关闭的 SqlSession，
+     * 且路由上下文（push/pop）已在方法返回时清理。调用方在方法外使用该 Mapper 执行查询时，
+     * 数据源路由上下文已失效，会走默认数据源而非 dsName 指定的库。
+     *
+     * <p>请优先使用 {@link #executeWithMapper}，它在回调内完成全部操作，
+     * 路由上下文生命周期与 SqlSession 一致，安全可靠。
      *
      * @param dsName      数据源名称
      * @param mapperClass Mapper 接口类
      * @param <M>         Mapper 类型
-     * @return Mapper 代理
+     * @return Mapper 代理（仅在返回后立即使用才安全，但不保证）
+     * @deprecated 路由上下文在方法返回时已清理，存在数据源路由失效风险，请使用 {@link #executeWithMapper}
      */
+    @Deprecated
     public <M> M getMapperInDataSource(String dsName, Class<M> mapperClass) {
         SqlSessionFactory factory = getSqlSessionFactory(dsName);
+        routingDataSource.push(dsName);
         SqlSession session = factory.openSession(true);
         try {
             return session.getMapper(mapperClass);
         } finally {
             session.close();
+            routingDataSource.pop();
         }
     }
 
@@ -780,6 +795,10 @@ public class DynamicJdbcTemplate {
     private SqlSessionFactory getSqlSessionFactory(String dsName) {
         if (sqlSessionFactoryManager == null) {
             throw new IllegalStateException("DynamicSqlSessionFactoryManager 未注入，"
+                    + "请在 DynamicDataSourceAutoConfiguration 中配置");
+        }
+        if (routingDataSource == null) {
+            throw new IllegalStateException("RoutingDataSource 未注入，"
                     + "请在 DynamicDataSourceAutoConfiguration 中配置");
         }
         return sqlSessionFactoryManager.getSqlSessionFactory(dsName);

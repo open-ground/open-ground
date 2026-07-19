@@ -12,6 +12,7 @@ import org.springframework.context.annotation.ComponentScan;
  */
 @AutoConfiguration
 @ComponentScan("io.github.openground.land.dmp")
-@MapperScan("io.github.openground.land.dmp.mapper")
+@MapperScan(basePackages = "io.github.openground.land.dmp.mapper",
+            sqlSessionFactoryRef = "landSqlSessionFactory")
 public class DmpAutoConfiguration {
 }
