@@ -241,6 +241,40 @@ class RoutingDataSourceTest {
     }
 
     @Nested
+    @DisplayName("dsName 不存在时的异常处理")
+    class UnknownDsName {
+
+        @Test
+        @DisplayName("push 不存在的 dsName 时，DynamicDataSourceManager 抛 IllegalArgumentException 由调用方感知")
+        void shouldThrowWhenDsNameNotExist() {
+            routingDataSource.setDataSourceManager(dataSourceManager);
+            // mock: dsName "unknown_db" 不存在，模拟真实 DynamicDataSourceManager 的行为
+            when(dataSourceManager.getDataSource("unknown_db"))
+                    .thenThrow(new IllegalArgumentException("数据源 [unknown_db] 未在配置或 sys_datasource 表中定义"));
+
+            routingDataSource.push("unknown_db");
+            assertThrows(IllegalArgumentException.class,
+                    () -> routingDataSource.determineTargetDataSource(),
+                    "dsName 不存在时应抛 IllegalArgumentException，由调用方感知错误");
+
+            // 清理栈，避免污染后续测试
+            routingDataSource.pop();
+        }
+
+        @Test
+        @DisplayName("push 不存在的 dsName 但 dataSourceManager 未注入时，回退默认数据源而非报错")
+        void shouldFallbackToDefaultWhenManagerNotInjectedAndDsNameUnknown() {
+            // 未注入 dataSourceManager
+            routingDataSource.push("unknown_db");
+            DataSource result = routingDataSource.determineTargetDataSource();
+
+            assertSame(defaultDataSource, result,
+                    "dataSourceManager 未注入时，无论 dsName 是否存在都应回退默认数据源");
+            routingDataSource.pop();
+        }
+    }
+
+    @Nested
     @DisplayName("初始化与默认数据源兜底")
     class Initialization {
 
