@@ -9,6 +9,7 @@ import io.github.openground.land.common.util.TaskDateUtil;
 import io.github.openground.land.core.TaskDispatchServiceUtil;
 import io.github.openground.land.mapper.TaskDispatchActiveHostMapper;
 import io.github.openground.land.mapper.TaskDispatchExeLogMapper;
+import io.github.openground.land.service.ActiveHostService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +41,9 @@ public class EndJob extends JobEngine {
 
     @Autowired
     private TaskDispatchActiveHostMapper activeHostMapper;
+
+    @Autowired
+    private ActiveHostService activeHostService;
 
     @Override
     public JobOut execute(Map<String, Object> param) throws Exception {
@@ -66,9 +69,6 @@ public class EndJob extends JobEngine {
             }
         }
 
-        Map<String, Object> pd = new HashMap<>();
-        pd.put("sysEodDate", nextEodDate);
-
         String str = CommonUtil.getStringValueFromHashMap(param, "cpsGroup");
         List<String> cpsGroups = new ArrayList<>();
         if (StrUtil.isNotBlank(str)) {
@@ -76,8 +76,7 @@ public class EndJob extends JobEngine {
         } else {
             cpsGroups.add(curCpsGroup);
         }
-        pd.put("cpsGroups", cpsGroups);
-        activeHostMapper.updateSysEodDate(pd);
+        activeHostService.updateSysEodDate(cpsGroups, null, nextEodDate);
 
         out.setSuccess(true);
         out.setMessage("日切执行成功,跑批日期切日到：" + nextEodDate);

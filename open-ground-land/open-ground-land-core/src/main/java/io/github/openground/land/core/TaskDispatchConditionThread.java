@@ -1,13 +1,13 @@
 package io.github.openground.land.core;
 
-import io.github.openground.base.utils.MapUtil;
+import io.github.openground.base.utils.SpringUtil;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.util.TaskDateUtil;
 import io.github.openground.land.mapper.TaskDispatchActiveHostMapper;
 import io.github.openground.land.mapper.TaskDispatchConfigMapper;
 import io.github.openground.land.mapper.TaskDispatchExeLogMapper;
+import io.github.openground.land.service.ActiveHostService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.map.HashedMap;
 
 import java.util.HashMap;
 import java.util.List;
@@ -76,10 +76,8 @@ public class TaskDispatchConditionThread implements Runnable {
             hostStatus = TaskDispatchServiceUtil.getHostStatus();
         } else {
             String hostIp = TaskDispatchServiceUtil.getCpsHostIp();
-            Map<String, Object> param = new HashMap<>();
-            param.put("hostIp", hostIp);
-            param.put("cpsGroup", cpsGroup);
-            Map<String, Object> map = MapUtil.mapKeyUpperCase(activeHostMapper.selectActiveHostStatus(param));
+            ActiveHostService activeHostService = SpringUtil.getBean(ActiveHostService.class);
+            Map<String, Object> map = activeHostService.getHostStatus(hostIp, cpsGroup);
             if (map != null && map.containsKey("ACTIVE_STATUS")) {
                 hostStatus = (String) map.get("ACTIVE_STATUS");
                 TaskDispatchServiceUtil.setHostStatus(hostStatus);

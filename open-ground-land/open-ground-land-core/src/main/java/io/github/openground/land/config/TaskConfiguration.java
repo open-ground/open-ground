@@ -8,12 +8,14 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Slf4j
 @AutoConfiguration
 @AutoConfigureAfter(LandDataSourceConfig.class)
 @EnableConfigurationProperties(TaskConfig.class)
+@EnableScheduling
 public class TaskConfiguration {
 
     private final TaskConfig taskConfig;

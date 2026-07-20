@@ -37,6 +37,7 @@ import io.github.openground.land.mapper.TaskDispatchConfigMapper;
 import io.github.openground.land.mapper.TaskDispatchExeLogMapper;
 import io.github.openground.land.mapper.TaskDispatchParamMapper;
 import io.github.openground.land.mapper.TaskDispatchStepLogMapper;
+import io.github.openground.land.service.ActiveHostService;
 import io.github.openground.land.service.TaskCenterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,6 +87,9 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Autowired
     private TaskConfig taskConfig;
+
+    @Autowired
+    private ActiveHostService activeHostService;
 
     @Autowired(required = false)
     private RemoteTaskExecutor remoteTaskExecutor;
@@ -137,15 +141,8 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             resultList.add(task);
         }
         String hostIp = TaskDispatchServiceUtil.getCpsHostIp();
-        Map<String, Object> param = new HashMap<>();
-        param.put("hostIp", hostIp);
-        if (StrUtil.isBlank(request.getCpsGroup())) {
-            param.put("cpsGroup", cpsGroup);
-        } else {
-            param.put("cpsGroup", request.getCpsGroup());
-        }
-        param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - taskConfig.getActiveHostTimeoutSeconds() * 1000L));
-        List<Map<String, Object>> list = activeHostMapper.hostListlistPage(param);
+        String targetCpsGroup = StrUtil.isBlank(request.getCpsGroup()) ? cpsGroup : request.getCpsGroup();
+        List<Map<String, Object>> list = activeHostService.getActiveHosts(targetCpsGroup, hostIp);
         // map key 转大写
         List<Map<String, Object>> hostList = new ArrayList<>();
         for (Map<String, Object> stringObjectMap : list) {
@@ -175,7 +172,7 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Override
     public CommonResult<?> queryHostList(TaskCenterRequest request) {
-        List<Map<String, Object>> list = activeHostMapper.hostListlistPage(null);
+        List<Map<String, Object>> list = activeHostService.getAllHosts(null);
         List<Map<String, Object>> result = new ArrayList<>();
         // 兼容 PgSql 模式 防止 key 为小写时，前台无法获取
         list.forEach(item -> {
@@ -862,8 +859,7 @@ public class TaskCenterServiceImpl implements TaskCenterService {
             // 从 active_host 表查询所有活跃的 cpsGroup（去重）
             // 活跃判定：ACTIVE_STATUS = 'ON' 或 ACTIVE_TIME 在最近 3 分钟内
             Map<String, Object> param = new HashMap<>();
-            param.put("activeTimeThreshold", new Date(System.currentTimeMillis() - taskConfig.getActiveHostTimeoutSeconds() * 1000L));
-            cpsGroupList = activeHostMapper.selectDistinctActiveCpsGroups(param);
+            cpsGroupList = activeHostService.getActiveCpsGroups();
         }
         Map<String, Object> result = new HashMap<>();
         result.put("resultlist", cpsGroupList);
@@ -919,11 +915,7 @@ public class TaskCenterServiceImpl implements TaskCenterService {
 
     @Override
     public CommonResult<?> getCpsServiceList(TaskMonitorRequest request) {
-        Map<String, Object> param = new HashMap<>();
-        if (request.getCpsGroup() != null && !request.getCpsGroup().isEmpty()) {
-            param.put("cpsGroup", request.getCpsGroup());
-        }
-        List<Map<String, Object>> activeHosts = activeHostMapper.hostListlistPage(param);
+        List<Map<String, Object>> activeHosts = activeHostService.getActiveHosts(request.getCpsGroup(), null);
         List<Map<String, String>> urlList = new ArrayList<>();
         for (Map<String, Object> host : activeHosts) {
             Map<String, String> one = new HashMap<>();

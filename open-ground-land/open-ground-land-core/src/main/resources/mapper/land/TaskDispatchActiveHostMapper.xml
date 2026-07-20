@@ -118,4 +118,9 @@
         WHERE ACTIVE_TIME > #{activeTimeThreshold}
     </select>
 
+    <delete id="deleteExpiredHosts">
+        DELETE FROM TASK_DISPATCH_ACTIVE_HOST
+        WHERE ACTIVE_TIME <![CDATA[ < ]]> #{cleanupThreshold}
+    </delete>
+
 </mapper>

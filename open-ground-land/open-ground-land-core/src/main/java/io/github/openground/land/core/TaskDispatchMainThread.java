@@ -3,7 +3,7 @@ package io.github.openground.land.core;
 import cn.hutool.core.util.ObjectUtil;
 import com.github.pagehelper.util.StringUtil;
 import io.github.openground.base.utils.CommonUtil;
-import io.github.openground.base.utils.MapUtil;
+import io.github.openground.base.utils.SpringUtil;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
@@ -14,8 +14,8 @@ import io.github.openground.land.config.TaskConfig;
 import io.github.openground.land.mapper.TaskDispatchActiveHostMapper;
 import io.github.openground.land.mapper.TaskDispatchConfigMapper;
 import io.github.openground.land.mapper.TaskDispatchExeLogMapper;
+import io.github.openground.land.service.ActiveHostService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.util.StringUtils;
 
 import java.text.ParseException;
@@ -40,6 +40,7 @@ public class TaskDispatchMainThread implements Runnable {
     // 主线程扫描周期，单位为秒
     private int scanningPeriod = 180;
     private TaskDispatchActiveHostMapper activeHostMapper;
+    private ActiveHostService activeHostService;
     private TaskDispatchConfigMapper configMapper;
     private TaskDispatchExeLogMapper exeLogMapper;
     private String cpsGroup;
@@ -57,6 +58,7 @@ public class TaskDispatchMainThread implements Runnable {
         this.scanningPeriod = scanningPeriod;
         this.cpsGroup = cpsGroup;
         this.taskConfig = TaskDispatchServiceUtil.getTaskConfig();
+        this.activeHostService = SpringUtil.getBean(ActiveHostService.class);
     }
 
     @Override
@@ -103,18 +105,7 @@ public class TaskDispatchMainThread implements Runnable {
     private void updateActiveHost() throws Exception {
         log.debug("更新主机活动时间");
         String hostIp = TaskDispatchServiceUtil.getCpsHostIp();
-        String currentTime = TaskDateUtil.getMachingCurrentTime();
-
-        Map<String, Object> param = new HashMap<>();
-        param.put("hostIp", hostIp);
-        param.put("activeTime", currentTime);
-        param.put("cpsGroup", cpsGroup);
-        int count = activeHostMapper.updateActiveHost(param);
-        if (0 == count) {
-            param.put("sysEodDate", CommonUtil.getCurrDate(CommonUtil.yyyyMMdd));
-            param.put("activeStatus", "OFF"); //默认关闭
-            activeHostMapper.insertActiveHost(param);
-        }
+        activeHostService.heartbeat(cpsGroup, hostIp);
     }
 
     /**
@@ -130,10 +121,7 @@ public class TaskDispatchMainThread implements Runnable {
     private boolean getActiveStatus() throws Exception {
         String hostStatus = "";
         String hostIp = TaskDispatchServiceUtil.getCpsHostIp();
-        Map<String, Object> param = new HashMap<>();
-        param.put("hostIp", hostIp);
-        param.put("cpsGroup", cpsGroup);
-        Map<String, Object> map = MapUtil.mapKeyUpperCase(activeHostMapper.selectActiveHostStatus(param));
+        Map<String, Object> map = activeHostService.getHostStatus(hostIp, cpsGroup);
         if (map != null && map.containsKey("ACTIVE_STATUS")) {
             hostStatus = (String) map.get("ACTIVE_STATUS");
             TaskDispatchServiceUtil.setHostStatus(hostStatus);
@@ -184,7 +172,7 @@ public class TaskDispatchMainThread implements Runnable {
         Map<String, Object> param = new HashMap<>();
         param.put("activeTime", activeTime);
         param.put("cpsGroup", cpsGroup);
-        return activeHostMapper.selectHostIpByActiveTime(param);
+        return activeHostService.getInactiveHostIps(cpsGroup);
     }
 
     /**
@@ -459,7 +447,7 @@ public class TaskDispatchMainThread implements Runnable {
         String activeTime = TaskDateUtil.nextOrBeforPriodTime(TaskDateUtil.getMachingCurrentTime(), -this.scanningPeriod * 2, "s");
         param.put("activeTime", activeTime);
         param.put("cpsGroup", cpsGroup);
-        return activeHostMapper.selectServiceHostIpByTask(param);
+        return activeHostService.getServiceHostByTask(cpsGroup, exeingTaskId, exeingHostIp);
     }
 
 

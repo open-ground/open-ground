@@ -36,4 +36,7 @@ public interface TaskDispatchActiveHostMapper {
     int updateHostIp(Map<String, Object> param);
 
     int updateSysEodDate(Map<String, Object> param);
+
+    /** 清理超过阈值的过期主机记录 */
+    int deleteExpiredHosts(Map<String, Object> param);
 }

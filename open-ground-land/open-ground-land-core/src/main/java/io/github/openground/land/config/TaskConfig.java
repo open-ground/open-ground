@@ -40,8 +40,11 @@ public class TaskConfig {
      */
     private Map<String, Object> dispatchCenter = new HashMap<>();
 
-    /** 活跃主机心跳超时秒数（默认 180 秒 = 3 分钟） */
-    private int activeHostTimeoutSeconds = 180;
+    /** 活跃主机心跳超时秒数（默认 120 秒 = 2分钟） */
+    private int activeHostTimeoutSeconds = 120;
+
+    /** 过期主机清理天数（默认 30 天无更新则清理） */
+    private int activeHostCleanupDays = 30;
 
     /** 子任务线程池配置（数据交换、批处理、脚本等子任务共享） */
     private StepPool stepPool = new StepPool();

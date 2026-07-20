@@ -36,7 +36,7 @@ CREATE TABLE `DMP_DATA_EXCHANGE_CONFIG` (
     INDEX `idx_task_type` (`task_type`),
     INDEX `idx_source_ds_id` (`source_ds_id`),
     INDEX `idx_target_ds_id` (`target_ds_id`),
-    INDEX `idx_status` (`status`),
+    INDEX `idx_status` (`task_status`),
     INDEX `idx_del_flag` (`del_flag`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB COMMENT='数据交换配置表';
