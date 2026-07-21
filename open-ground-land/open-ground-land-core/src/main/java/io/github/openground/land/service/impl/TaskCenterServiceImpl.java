@@ -17,7 +17,6 @@ import io.github.openground.land.api.dto.TaskMonitorRequest;
 import io.github.openground.land.api.dto.TaskMonitorResponse;
 import io.github.openground.land.api.dto.TaskSegmentRequest;
 import io.github.openground.land.api.executor.RemoteTaskExecutor;
-import io.github.openground.land.common.constants.ErrorCode;
 import io.github.openground.land.common.entity.ScheduleDomain;
 import io.github.openground.land.common.entity.TaskDispatchConfigDomain;
 import io.github.openground.land.common.entity.TaskDispatchExeLogDomain;
@@ -49,7 +48,6 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -220,7 +218,7 @@ public class TaskCenterServiceImpl implements TaskCenterService {
     public CommonResult<?> update(TaskCenterRequest request) {
         TaskDispatchConfigDomain po = new TaskDispatchConfigDomain();
         BeanUtil.copyProperties(request, po);
-        TaskDispatchConfigDomain config = configMapper.selectById(po.getTaskId());
+        TaskDispatchConfigDomain config = configMapper.selectTaskDispatchConfigByPK(po.getTaskId());
         if (config == null) {
             throw new RuntimeException("990001");
         }

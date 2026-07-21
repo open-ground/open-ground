@@ -3,7 +3,7 @@ package io.github.openground.land.config;
 import com.alibaba.druid.pool.DruidDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.SqlSessionFactoryBean;
+import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -66,7 +66,7 @@ public class LandDataSourceConfig {
     @Bean("landSqlSessionFactory")
     // @ConditionalOnMissingBean(name = "landSqlSessionFactory")
     public SqlSessionFactory landSqlSessionFactory(@Qualifier("landDataSource") javax.sql.DataSource landDataSource) throws Exception {
-        SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
+        MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(landDataSource);
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         // land-core 模块的 Mapper XML（classpath:mapper/land/*.xml）
