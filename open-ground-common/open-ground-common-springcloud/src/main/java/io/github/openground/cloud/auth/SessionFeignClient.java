@@ -15,8 +15,8 @@ import java.util.List;
  * @author open-ground
  * @version 1.0
  */
-@FeignClient(name = "${ground.auth.application.name: ground-auth}",
-             path = "${ground.auth.server.context-path: }",
+@FeignClient(name = "${ground.auth.application.name: imap-center-auth}",
+             path = "${ground.auth.server.context-path: /auth/uaa}",
              url = "${ground.auth.url:}")
 public interface SessionFeignClient {
 

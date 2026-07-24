@@ -1,6 +1,7 @@
 package io.github.openground.common.keygen.config;
 
 import io.github.openground.common.config.condition.ConditionalOnAuth;
+import io.github.openground.common.jdbc.DynamicJdbcTemplate;
 import io.github.openground.common.keygen.JdbcSequenceProvider;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.common.keygen.SequenceProvider;
@@ -8,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 /**
  * 主键生成器自动配置（集成部署模式）
@@ -33,9 +33,9 @@ public class KeyGenAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(SequenceProvider.class)
-    public SequenceProvider jdbcSequenceProvider(DataSourceTransactionManager txManager) {
+    public SequenceProvider jdbcSequenceProvider(DynamicJdbcTemplate dynamicJdbcTemplate) {
         log.info("初始化 JdbcSequenceProvider（集成部署模式，直连数据库）");
-        return new JdbcSequenceProvider(txManager);
+        return new JdbcSequenceProvider(dynamicJdbcTemplate);
     }
 
     /**

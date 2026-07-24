@@ -1,5 +1,6 @@
 package io.github.openground.common.jdbc;
 
+import io.github.openground.common.jdbc.config.DynamicDataSourceProperties;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collections;

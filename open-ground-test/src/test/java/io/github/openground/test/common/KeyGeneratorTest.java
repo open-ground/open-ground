@@ -86,28 +86,28 @@ class KeyGeneratorTest {
         @Test
         @DisplayName("应生成格式化后的序号字符串")
         void shouldGenerateFormattedKey() {
-            String key = keyGenerator.nextKey("TEST_SEQ_01");
+            String key = keyGenerator.nextKey("INTERNAL_KEY");
             assertNotNull(key);
             assertFalse(key.isEmpty());
-            // TEST_SEQ_01 的 pk_len=6，因此 key 应为 6 位数字（或带前缀）
+            // INTERNAL_KEY 的 pk_len=6，因此 key 应为 6 位数字（或带前缀）
             assertTrue(key.matches("\\d+"), "序列主键应为数字字符串: " + key);
         }
 
         @Test
         @DisplayName("应包含前缀")
         void shouldRespectPrefix() {
-            // TEST_USER_ID 的 prefix='U'，所以 key 应以 U 开头
-            String key = keyGenerator.nextKey("TEST_USER_ID");
+            // INTERNAL_KEY 的 prefix='U'，所以 key 应以 U 开头
+            String key = keyGenerator.nextKey("INTERNAL_KEY");
             assertNotNull(key);
-            assertTrue(key.startsWith("U"), "TEST_USER_ID 应以 'U' 开头: " + key);
+            assertTrue(key.startsWith("U"), "INTERNAL_KEY 应以 'U' 开头: " + key);
         }
 
         @Test
         @DisplayName("连续调用应返回递增的值")
         void shouldBeIncremental() {
-            String key1 = keyGenerator.nextKey("TEST_SEQ_01");
-            String key2 = keyGenerator.nextKey("TEST_SEQ_01");
-            String key3 = keyGenerator.nextKey("TEST_SEQ_01");
+            String key1 = keyGenerator.nextKey("INTERNAL_KEY");
+            String key2 = keyGenerator.nextKey("INTERNAL_KEY");
+            String key3 = keyGenerator.nextKey("INTERNAL_KEY");
 
             long v1 = Long.parseLong(key1);
             long v2 = Long.parseLong(key2);
@@ -120,8 +120,8 @@ class KeyGeneratorTest {
         @Test
         @DisplayName("不同序列名称返回不同的值")
         void differentSequencesShouldBeIndependent() {
-            String key1 = keyGenerator.nextKey("TEST_SEQ_01");
-            String key2 = keyGenerator.nextKey("TEST_USER_ID");
+            String key1 = keyGenerator.nextKey("INTERNAL_KEY");
+            String key2 = keyGenerator.nextKey("INTERNAL_KEY");
             assertNotNull(key1);
             assertNotNull(key2);
         }
@@ -134,7 +134,7 @@ class KeyGeneratorTest {
         @Test
         @DisplayName("应生成带前缀和日期的流水号")
         void shouldGenerateFormattedBusinessKey() {
-            String key = keyGenerator.businessKey("TEST_BUSINESS_KEY");
+            String key = keyGenerator.businessKey("INTERNAL_KEY");
             assertNotNull(key);
             assertFalse(key.isEmpty());
             // 应包含系统编码前缀 'TEST' 和日期（8位 yyyyMMdd）
@@ -144,8 +144,8 @@ class KeyGeneratorTest {
         @Test
         @DisplayName("连续调用应返回不同的流水号")
         void shouldBeUniqueOnEachCall() {
-            String key1 = keyGenerator.businessKey("TEST_BUSINESS_KEY");
-            String key2 = keyGenerator.businessKey("TEST_BUSINESS_KEY");
+            String key1 = keyGenerator.businessKey("INTERNAL_KEY");
+            String key2 = keyGenerator.businessKey("INTERNAL_KEY");
             assertNotNull(key1);
             assertNotNull(key2);
         }

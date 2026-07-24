@@ -1,11 +1,14 @@
 package io.github.openground.cloud.auth;
 
 import io.github.openground.base.dto.CommonResult;
+import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.keygen.KeyInfoDomain;
 import io.github.openground.common.log.domain.SysOptLog;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.List;
 
 /**
  * Auth 服务 Feign 客户端（统一）
@@ -14,8 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @author open-ground
  * @version 1.0
  */
-@FeignClient(name = "${ground.auth.application.name: ground-auth}",
-             path = "${ground.auth.server.context-path: }",
+@FeignClient(name = "${ground.auth.application.name: imap-center-auth}",
+             path = "${ground.auth.server.context-path: /auth/uaa}",
              url = "${ground.auth.url:}")
 public interface AuthFeignClient {
 
@@ -44,4 +47,12 @@ public interface AuthFeignClient {
      */
     @PostMapping("/comm/api/insertOptLog")
     CommonResult insertOptLog(@RequestBody SysOptLog sysOptLog);
+
+    /**
+     * 获取所有数据源
+     * @param sysDatasourceDO
+     * @return
+     */
+    @PostMapping("/sys/datasource/listAll")
+    CommonResult<List<SysDatasourceDO>> listAllDatasource(@RequestBody SysDatasourceDO sysDatasourceDO);
 }

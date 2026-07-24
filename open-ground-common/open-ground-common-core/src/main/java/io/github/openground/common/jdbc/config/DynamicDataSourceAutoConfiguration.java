@@ -1,5 +1,12 @@
-package io.github.openground.common.jdbc;
+package io.github.openground.common.jdbc.config;
 
+import io.github.openground.common.jdbc.ConfigDataSourceProvider;
+import io.github.openground.common.jdbc.DataSourceProvider;
+import io.github.openground.common.jdbc.DataSourceProviderRegistry;
+import io.github.openground.common.jdbc.DynamicDataSourceManager;
+import io.github.openground.common.jdbc.DynamicJdbcTemplate;
+import io.github.openground.common.jdbc.DynamicSqlSessionFactoryManager;
+import io.github.openground.common.jdbc.RoutingDataSource;
 import io.github.openground.common.jdbc.dialect.DbDialectRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;

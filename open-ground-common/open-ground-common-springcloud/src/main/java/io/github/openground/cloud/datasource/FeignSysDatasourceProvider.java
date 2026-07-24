@@ -1,12 +1,13 @@
-package io.github.openground.common.datasource;
+package io.github.openground.cloud.datasource;
 
+import io.github.openground.base.dto.CommonResult;
 import io.github.openground.base.utils.AESUtil;
+import io.github.openground.cloud.auth.AuthFeignClient;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
-import io.github.openground.common.datasource.service.SysDatasourceService;
 import io.github.openground.common.jdbc.DataSourceDescriptor;
 import io.github.openground.common.jdbc.DataSourceProvider;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Collections;
@@ -20,13 +21,13 @@ import java.util.stream.Collectors;
  * 优先级 order=20，高于 dblist 配置式 Provider（order=10）。
  *
  * @author open-ground
- * @since 1.0.2
+ * @since 1.0.6
  */
 @Slf4j
-public class SysDatasourceProvider implements DataSourceProvider {
+@RequiredArgsConstructor
+public class FeignSysDatasourceProvider implements DataSourceProvider {
 
-    @Autowired(required = false)
-    private SysDatasourceService sysDatasourceService;
+    private final AuthFeignClient feignClient;
 
     @Value("${ground.datasource.encrypt.key:ABCDEFG123456KEY}")
     private String encryptKey;
@@ -36,20 +37,22 @@ public class SysDatasourceProvider implements DataSourceProvider {
 
     @Override
     public List<DataSourceDescriptor> listDataSources() {
-        if (sysDatasourceService == null) {
-            log.debug("SysDatasourceService not available, returning empty list");
-            return Collections.emptyList();
-        }
         try {
-            List<SysDatasourceDO> list = sysDatasourceService.listAll();
-            if (list == null || list.isEmpty()) {
+            CommonResult<List<SysDatasourceDO>> result = feignClient.listAllDatasource(new SysDatasourceDO());
+            if ("0000".equals(result.getCode())) {
+                List<SysDatasourceDO> list = result.getData();
+                if (list == null || list.isEmpty()) {
+                    return Collections.emptyList();
+                }
+                return list.stream()
+                        .map(this::toDescriptor)
+                        .collect(Collectors.toList());
+            } else {
+                log.error("远程获取数据源异常: code={}, message={}", result.getCode(), result.getMessage());
                 return Collections.emptyList();
             }
-            return list.stream()
-                    .map(this::toDescriptor)
-                    .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("从 sys_datasource 读取数据源失败: {}", e.getMessage());
+            log.warn("从feign远程数据源失败: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

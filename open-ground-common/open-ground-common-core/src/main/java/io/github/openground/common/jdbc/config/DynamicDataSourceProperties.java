@@ -1,4 +1,4 @@
-package io.github.openground.common.jdbc;
+package io.github.openground.common.jdbc.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

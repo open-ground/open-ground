@@ -1,6 +1,7 @@
-package io.github.openground.common.jdbc;
+package io.github.openground.common.jdbc.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import io.github.openground.common.jdbc.DynamicDataSourceManager;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

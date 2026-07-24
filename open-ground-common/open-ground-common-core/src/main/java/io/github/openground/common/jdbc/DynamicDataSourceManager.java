@@ -1,6 +1,8 @@
 package io.github.openground.common.jdbc;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import io.github.openground.common.jdbc.config.DruidProperties;
+import io.github.openground.common.jdbc.config.DynamicDataSourceProperties;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;

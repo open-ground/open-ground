@@ -1,12 +1,11 @@
 package io.github.openground.common.keygen;
 
 import io.github.openground.base.utils.DateUtils;
+import io.github.openground.common.jdbc.DynamicJdbcTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import java.text.SimpleDateFormat;
@@ -24,20 +23,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JdbcSequenceProvider implements SequenceProvider {
 
-    private final DataSourceTransactionManager txManager;
+    private final DynamicJdbcTemplate dynamicJdbcTemplate;
 
     @Override
     public KeyInfoDomain retrieveAndAdvance(String keyName, int count) {
         DefaultTransactionDefinition td = new DefaultTransactionDefinition();
         td.setPropagationBehavior(DefaultTransactionDefinition.PROPAGATION_REQUIRES_NEW);
         td.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
-        TransactionStatus ts = txManager.getTransaction(td);
         try {
             if (count == 0) {
                 count = 1;
             }
 
-            JdbcTemplate jt = new JdbcTemplate(txManager.getDataSource());
+            JdbcTemplate jt = dynamicJdbcTemplate.getJdbcTemplate();
 
             // 推进序列值
             int n = jt.update(
@@ -67,17 +65,13 @@ public class JdbcSequenceProvider implements SequenceProvider {
             keyinfo.setNextKey(keyinfo.getMaxValue() - keyinfo.getStepLen() + 1);
 
             // 主键重置逻辑
-            handleReset(jt, keyinfo, count);
-
-            txManager.commit(ts);
+            handleReset(keyinfo, count);
             return keyinfo;
         } catch (RuntimeException e) {
             log.error("获取序列异常: {}", e.getMessage());
-            txManager.rollback(ts);
             throw e;
         } catch (Exception e) {
             log.error("获取序列异常: {}", e.getMessage());
-            txManager.rollback(ts);
             throw new RuntimeException("获取序列异常", e);
         }
     }
@@ -85,7 +79,8 @@ public class JdbcSequenceProvider implements SequenceProvider {
     /**
      * 处理主键重置逻辑
      */
-    private void handleReset(JdbcTemplate jt, KeyInfoDomain keyinfo, int count) {
+    private void handleReset(KeyInfoDomain keyinfo, int count) {
+        JdbcTemplate jt = dynamicJdbcTemplate.getJdbcTemplate();
         String resetFreq = keyinfo.getResetFreq();
         if (resetFreq == null || resetFreq.isEmpty()) {
             return;
