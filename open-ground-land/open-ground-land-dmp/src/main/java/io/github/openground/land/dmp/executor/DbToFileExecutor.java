@@ -4,7 +4,9 @@ import io.github.openground.base.exception.CommonException;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.jdbc.DynamicJdbcTemplate;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskFileDir;
+import io.github.openground.land.dmp.mapper.TaskFileDirMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -33,14 +35,17 @@ public class DbToFileExecutor {
     @Autowired
     private SysDatasourceMapper sysDatasourceMapper;
 
+    @Autowired
+    private TaskFileDirMapper fileDirMapper;
+
     /**
      * 执行库导出文件
      *
      * @param config 任务配置
      * @return 导出行数
      */
-    public int execute(DmpDataExchangeConfig config) {
-        String filePath = normalizePath(DatePathResolver.resolve(config.getTargetFilePath()));
+    public int execute(TaskDataExchangeConfig config) {
+        String filePath = resolveFilePath(config.getTargetFileDirId(), config.getTargetFilePath());
         String delimiter = config.getFileDelimiter() != null ? config.getFileDelimiter() : "|";
         String encoding = config.getFileEncoding() != null ? config.getFileEncoding() : "UTF-8";
         int batchSize = config.getBatchSize() != null && config.getBatchSize() > 0 ? config.getBatchSize() : 2000;
@@ -96,7 +101,7 @@ public class DbToFileExecutor {
     /**
      * 根据导出模式构建 SQL
      */
-    private String buildQuerySql(DmpDataExchangeConfig config) {
+    private String buildQuerySql(TaskDataExchangeConfig config) {
         String mode = config.getExportMode();
         String table = config.getTargetTable();
         String sourceQuery = config.getSourceQuery();
@@ -130,7 +135,7 @@ public class DbToFileExecutor {
      */
     private int doExport(String dsName, String sql, String tmpPath, String delimiter,
                          String encoding, int batchSize, boolean headerEnabled,
-                         DmpDataExchangeConfig config) throws Exception {
+                         TaskDataExchangeConfig config) throws Exception {
 
         List<ColumnMapping> columns = resolveColumnMappings(config, dsName, sql, batchSize);
 
@@ -178,8 +183,8 @@ public class DbToFileExecutor {
     /**
      * 解析列映射：有配置则用配置，无配置则从查询结果自动获取
      */
-    private List<ColumnMapping> resolveColumnMappings(DmpDataExchangeConfig config,
-                                                       String dsName, String sql, int batchSize) {
+    private List<ColumnMapping> resolveColumnMappings(TaskDataExchangeConfig config,
+                                                      String dsName, String sql, int batchSize) {
         // 优先使用配置的列映射
         List<ColumnMapping> parsed = parseColumnMappings(config.getColumnMappings());
         if (!parsed.isEmpty()) {
@@ -231,18 +236,29 @@ public class DbToFileExecutor {
      */
     private void writeLine(BufferedWriter writer, Map<String, Object> row,
                            List<ColumnMapping> columns, String delimiter) throws IOException {
+        // 预构建大小写不敏感的 key 索引（JDBC 不同驱动返回的列名大小写可能不一致）
+        Map<String, Object> caseInsensitiveRow = new HashMap<>();
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            if (entry.getKey() != null) {
+                caseInsensitiveRow.put(entry.getKey().toLowerCase(), entry.getValue());
+            }
+        }
+
         StringBuilder line = new StringBuilder();
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) line.append(delimiter);
             ColumnMapping cm = columns.get(i);
-            Object value = row.get(cm.getTargetColumn());
+            String colName = cm.getTargetColumn();
+            // 先精确匹配，再忽略大小写匹配
+            Object value = row.get(colName);
+            if (value == null && colName != null) {
+                value = caseInsensitiveRow.get(colName.toLowerCase());
+            }
             if (value != null) {
                 String str = formatValue(value, cm.getTargetType(), delimiter);
                 line.append(str);
-            } else {
-                // 列名在查询结果中不存在时记录日志
-                log.warn("导出列 '{}' 在查询结果中不存在，跳过", cm.getTargetColumn());
             }
+            // value 为 null 时可能是列不存在也可能是值为 null，不再输出警告
         }
         writer.write(line.toString());
         writer.newLine();
@@ -319,6 +335,24 @@ public class DbToFileExecutor {
     private static String normalizePath(String path) {
         if (path == null) return null;
         return path.replace("\\", "/");
+    }
+
+    /**
+     * 解析文件完整路径：若 dirId 非空，拼接目录路径 + 文件名；否则直接用 filePath（向后兼容）
+     */
+    private String resolveFilePath(Long dirId, String filePath) {
+        String resolved = DatePathResolver.resolve(filePath);
+        if (dirId != null) {
+            TaskFileDir dir = fileDirMapper.selectById(dirId);
+            if (dir != null && dir.getDirPath() != null) {
+                String dirPath = normalizePath(dir.getDirPath());
+                if (!dirPath.endsWith("/")) {
+                    dirPath = dirPath + "/";
+                }
+                resolved = dirPath + resolved;
+            }
+        }
+        return normalizePath(resolved);
     }
 
     // ====== 列映射解析（与 FileToDbExecutor 共享） ======

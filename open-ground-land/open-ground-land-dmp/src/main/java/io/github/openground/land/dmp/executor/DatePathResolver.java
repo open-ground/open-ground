@@ -64,23 +64,25 @@ public class DatePathResolver {
     }
 
     private static String toJavaDateFormat(String placeholder) {
-        switch (placeholder) {
-            case "yyyyMMdd":
+        // 占位符大小写不敏感（用户可能输入 ${YYYYMMDD} 或 ${yyyyMMdd}）
+        String key = placeholder.toLowerCase();
+        switch (key) {
+            case "yyyymmdd":
                 return "yyyyMMdd";
-            case "yyyy-MM-dd":
+            case "yyyy-mm-dd":
                 return "yyyy-MM-dd";
-            case "yyyyMM":
+            case "yyyymm":
                 return "yyyyMM";
             case "yyyy":
                 return "yyyy";
-            case "MMdd":
+            case "mmdd":
                 return "MMdd";
-            case "HHmmss":
+            case "hhmmss":
                 return "HHmmss";
-            case "HH:mm:ss":
+            case "hh:mm:ss":
                 return "HH:mm:ss";
             default:
-                return placeholder; // 透传，让 SimpleDateFormat 尝试
+                return key; // 透传，让 SimpleDateFormat 尝试
         }
     }
 }

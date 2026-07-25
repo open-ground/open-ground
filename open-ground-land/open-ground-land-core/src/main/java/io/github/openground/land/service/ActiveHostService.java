@@ -21,7 +21,7 @@ import java.util.Map;
  * <p>统一管理 TASK_DISPATCH_ACTIVE_HOST 表的心跳注册、服务发现、活跃判定、过期清理</p>
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Slf4j
 @Service

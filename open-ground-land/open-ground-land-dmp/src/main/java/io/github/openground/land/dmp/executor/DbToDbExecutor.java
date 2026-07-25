@@ -4,7 +4,7 @@ import io.github.openground.base.exception.CommonException;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.jdbc.DynamicJdbcTemplate;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -44,7 +44,7 @@ public class DbToDbExecutor {
      * @param config 任务配置
      * @return 执行结果
      */
-    public ExecuteResult execute(DmpDataExchangeConfig config) {
+    public ExecuteResult execute(TaskDataExchangeConfig config) {
         SysDatasourceDO sourceDs = resolveDataSource(config.getSourceDsId(), "源");
         SysDatasourceDO targetDs = resolveDataSource(config.getTargetDsId(), "目标");
         String sourceDsName = sourceDs.getDsName();
@@ -82,7 +82,7 @@ public class DbToDbExecutor {
     /**
      * 根据导出模式构建源端查询 SQL
      */
-    private String buildQuerySql(DmpDataExchangeConfig config) {
+    private String buildQuerySql(TaskDataExchangeConfig config) {
         String mode = config.getExportMode();
         String table = config.getSourceTable();
         String sourceQuery = config.getSourceQuery();
@@ -116,7 +116,7 @@ public class DbToDbExecutor {
     private ExecuteResult doParallelSync(String sourceDsName, String targetDsName, String targetTable,
                                           String sql, List<ColumnMapping> columns,
                                           int batchSize, int threadCount, String delimiter,
-                                          DmpDataExchangeConfig config) {
+                                          TaskDataExchangeConfig config) {
         // 存储错误信息
         AtomicLong totalRows = new AtomicLong(0);
         AtomicLong errorRows = new AtomicLong(0);
@@ -329,8 +329,8 @@ public class DbToDbExecutor {
     /**
      * 解析列映射：优先使用配置的映射，否则从查询结果自动获取
      */
-    private List<ColumnMapping> resolveColumnMappings(DmpDataExchangeConfig config,
-                                                       String sourceDsName, String sql) {
+    private List<ColumnMapping> resolveColumnMappings(TaskDataExchangeConfig config,
+                                                      String sourceDsName, String sql) {
         List<ColumnMapping> parsed = parseColumnMappings(config.getColumnMappings());
         if (!parsed.isEmpty()) {
             return parsed;

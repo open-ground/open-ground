@@ -8,11 +8,11 @@ import org.springframework.context.annotation.ComponentScan;
  * 数据管理平台自动装配
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @AutoConfiguration
 @ComponentScan("io.github.openground.land.dmp")
-@MapperScan(basePackages = "io.github.openground.land.dmp.mapper",
-            sqlSessionFactoryRef = "landSqlSessionFactory")
-public class DmpAutoConfiguration {
+@MapperScan(basePackages = "io.github.openground.land.dmp.mapper",sqlSessionFactoryRef = "landSqlSessionFactory")
+public class LandDmpAutoConfiguration {
 }
+

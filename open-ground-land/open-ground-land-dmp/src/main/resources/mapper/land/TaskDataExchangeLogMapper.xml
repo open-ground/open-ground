@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.dmp.mapper.TaskDataExchangeLogMapper">
+
+    <!-- 通用 CRUD（insert/updateById/selectById）由 BaseMapper 自动处理 -->
+    <!-- DMP_DATA_EXCHANGE_LOG 表无 del_flag 字段，不使用逻辑删除 -->
+    <!-- 以下仅为自定义业务查询 -->
+
+    <sql id="Base_Column_List">
+        id, config_id, task_type, start_time, end_time, duration_seconds, run_status, row_count, error_msg,
+        create_by, create_time
+    </sql>
+
+    <select id="selectList" resultType="io.github.openground.land.dmp.entity.TaskDataExchangeLog">
+        SELECT <include refid="Base_Column_List"/>
+        FROM TASK_DATA_EXCHANGE_LOG
+        <where>
+            <if test="configId != null">AND config_id = #{configId}</if>
+            <if test="taskType != null and taskType != ''">AND task_type = #{taskType}</if>
+            <if test="runStatus != null and runStatus != ''">AND run_status = #{runStatus}</if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

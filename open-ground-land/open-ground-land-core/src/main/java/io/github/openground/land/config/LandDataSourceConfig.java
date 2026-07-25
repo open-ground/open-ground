@@ -61,7 +61,7 @@ public class LandDataSourceConfig {
 
     /**
      * 框架 SqlSessionFactory
-     * <p>扫描 classpath:mapper/land/*.xml 下的框架 Mapper XML</p>
+     * <p>扫描 classpath:mapper/land/*.xml 下的框架 Mapper XML（含 land-core 和 land-dmp 模块）</p>
      */
     @Bean("landSqlSessionFactory")
     // @ConditionalOnMissingBean(name = "landSqlSessionFactory")
@@ -69,16 +69,10 @@ public class LandDataSourceConfig {
         MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(landDataSource);
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        // land-core 模块的 Mapper XML（classpath:mapper/land/*.xml）
-        org.springframework.core.io.Resource[] landXmls = resolver.getResources("classpath*:mapper/land/*.xml");
-        // DMP 模块的 Mapper XML（classpath:mapper/Dmp*.xml）
-        org.springframework.core.io.Resource[] dmpXmls = resolver.getResources("classpath*:mapper/Dmp*.xml");
-        // 合并
-        org.springframework.core.io.Resource[] all = new org.springframework.core.io.Resource[landXmls.length + dmpXmls.length];
-        System.arraycopy(landXmls, 0, all, 0, landXmls.length);
-        System.arraycopy(dmpXmls, 0, all, landXmls.length, dmpXmls.length);
-        factory.setMapperLocations(all);
-        log.info("初始化调度框架 SqlSessionFactory");
+        // 统一扫描 classpath*:mapper/land/*.xml（land-core 的 TASK_DISPATCH_* 和 land-dmp 的 DMP_* 均在此目录下）
+        org.springframework.core.io.Resource[] xmls = resolver.getResources("classpath*:mapper/land/*.xml");
+        factory.setMapperLocations(xmls);
+        log.info("初始化调度框架 SqlSessionFactory, 加载 {} 个 Mapper XML", xmls.length);
         return factory.getObject();
     }
 

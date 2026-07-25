@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.openground.land.dmp.mapper.TaskDataExchangeConfigMapper">
+
+    <!-- 通用 CRUD（insert/updateById/deleteById/selectById）由 BaseMapper + @TableLogic 自动处理 -->
+    <!-- 以下仅为自定义业务查询 -->
+
+    <sql id="Base_Column_List">
+        id, task_name, task_type, source_ds_id, target_ds_id, source_query,
+        source_table, source_file_path, target_table, target_file_path, file_delimiter,
+        file_encoding, write_mode, batch_size, column_mappings, thread_count,
+        task_status, header_enabled, done_file_enabled, export_mode,
+        source_file_dir_id, target_file_dir_id, source_system,
+        create_by, create_time, update_by, update_time
+    </sql>
+
+    <select id="selectList" resultType="io.github.openground.land.dmp.entity.TaskDataExchangeConfig">
+        SELECT <include refid="Base_Column_List"/>
+        FROM TASK_DATA_EXCHANGE_CONFIG
+        <where>
+            del_flag = '0'
+            <if test="taskName != null and taskName != ''">
+                AND task_name LIKE CONCAT('%', #{taskName}, '%')
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="taskStatus != null and taskStatus != ''">
+                AND task_status = #{taskStatus}
+            </if>
+            <if test="dsId != null">
+                AND (source_ds_id = #{dsId} OR target_ds_id = #{dsId})
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectEnabledConfigs" resultType="io.github.openground.land.dmp.entity.TaskDataExchangeConfig">
+        SELECT <include refid="Base_Column_List"/>
+        FROM TASK_DATA_EXCHANGE_CONFIG
+        WHERE del_flag = '0' AND task_status = 'ENABLED'
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

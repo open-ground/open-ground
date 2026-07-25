@@ -6,16 +6,16 @@ import io.github.openground.base.dto.CommonResult;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.common.security.SecurityContextHolder;
 import io.github.openground.land.api.dto.DataExchangeConfigDTO;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
-import io.github.openground.land.dmp.entity.DmpDataExchangeLog;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskDataExchangeLog;
 import io.github.openground.land.dmp.entity.TaskType;
 import io.github.openground.land.dmp.executor.DatePathResolver;
 import io.github.openground.land.dmp.executor.DbToDbExecutor;
 import io.github.openground.land.dmp.executor.DbToFileExecutor;
 import io.github.openground.land.dmp.executor.FileToDbExecutor;
-import io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper;
-import io.github.openground.land.dmp.mapper.DmpDataExchangeLogMapper;
-import io.github.openground.land.dmp.service.DataExchangeConfigService;
+import io.github.openground.land.dmp.mapper.TaskDataExchangeConfigMapper;
+import io.github.openground.land.dmp.mapper.TaskDataExchangeLogMapper;
+import io.github.openground.land.dmp.service.TaskDataExchangeConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,19 +37,22 @@ import java.util.Map;
  * 数据交换配置控制器
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Slf4j
 @Tag(name = "数据交换配置")
 @RestController
-@RequestMapping("/dmp/exchange/config")
-public class DataExchangeConfigController {
+@RequestMapping("/task/exchange/config")
+public class TaskExchangeConfigController {
 
     @Autowired
-    private DataExchangeConfigService configService;
+    private TaskDataExchangeConfigService configService;
 
     @Autowired
-    private DmpDataExchangeConfigMapper configMapper;
+    private io.github.openground.land.dmp.service.LineageService lineageService;
+
+    @Autowired
+    private TaskDataExchangeConfigMapper configMapper;
 
     @Autowired
     private FileToDbExecutor fileToDbExecutor;
@@ -65,7 +68,7 @@ public class DataExchangeConfigController {
     private AsyncTaskExecutor landTaskExecutor;
 
     @Autowired
-    private DmpDataExchangeLogMapper logMapper;
+    private TaskDataExchangeLogMapper logMapper;
 
     @Operation(summary = "配置列表查询")
     @PostMapping("/list")
@@ -99,7 +102,7 @@ public class DataExchangeConfigController {
     @Operation(summary = "手动执行数据交换任务")
     @PostMapping("/execute")
     public CommonResult<?> execute(@RequestBody DataExchangeConfigDTO request) {
-        DmpDataExchangeConfig config = configMapper.selectById(request.getId());
+        TaskDataExchangeConfig config = configMapper.selectById(request.getId());
         if (config == null) {
             return CommonResult.error("1000", "配置不存在");
         }
@@ -110,10 +113,10 @@ public class DataExchangeConfigController {
         // 记录执行人信息到配置
         config.setUpdateBy(executor);
         config.setUpdateTime(new Date());
-        configMapper.update(config);
+        configMapper.updateById(config);
 
         // 创建执行日志（初始状态）
-        DmpDataExchangeLog execLog = new DmpDataExchangeLog();
+        TaskDataExchangeLog execLog = new TaskDataExchangeLog();
         execLog.setId(KeyGenerator.getInternalKey());
         execLog.setConfigId(config.getId());
         execLog.setTaskType(taskType);
@@ -124,7 +127,7 @@ public class DataExchangeConfigController {
         logMapper.insert(execLog);
 
         // 异步执行，避免大任务请求超时
-        final DmpDataExchangeLog logRef = execLog;
+        final TaskDataExchangeLog logRef = execLog;
         landTaskExecutor.submit(() -> executeTask(logRef, config, taskType));
 
         Map<String, Object> result = new HashMap<>();
@@ -133,31 +136,31 @@ public class DataExchangeConfigController {
         return CommonResult.success(result);
     }
 
-    private void executeTask(DmpDataExchangeLog execLog, DmpDataExchangeConfig config, String taskType) {
+    private void executeTask(TaskDataExchangeLog execLog, TaskDataExchangeConfig config, String taskType) {
         try {
             if (TaskType.FILE_TO_DB.matches(taskType)) {
                 FileToDbExecutor.ExecuteResult execResult = fileToDbExecutor.execute(config);
-                logMapper.update(completedLog(execLog, execResult.getErrorRows() > 0 ? "PARTIAL" : "SUCCESS",
+                logMapper.updateById(completedLog(execLog, execResult.getErrorRows() > 0 ? "PARTIAL" : "SUCCESS",
                         execResult.getSuccessRows() + execResult.getErrorRows(),
                         "成功 " + execResult.getSuccessRows() + " 行"
                                 + (execResult.getErrorRows() > 0 ? "，失败 " + execResult.getErrorRows() + " 行" : "")
                                 + (execResult.getErrorLogPath() != null ? "。错误文件：" + execResult.getErrorLogPath() : "")));
             } else if (TaskType.DB_TO_FILE.matches(taskType)) {
                 int rows = dbToFileExecutor.execute(config);
-                logMapper.update(completedLog(execLog, "SUCCESS", rows, null));
+                logMapper.updateById(completedLog(execLog, "SUCCESS", rows, null));
             } else if (TaskType.DB_TO_DB.matches(taskType)) {
                 DbToDbExecutor.ExecuteResult execResult = dbToDbExecutor.execute(config);
-                logMapper.update(completedLog(execLog, execResult.getErrorRows() > 0 ? "PARTIAL" : "SUCCESS",
+                logMapper.updateById(completedLog(execLog, execResult.getErrorRows() > 0 ? "PARTIAL" : "SUCCESS",
                         execResult.getSuccessRows() + execResult.getErrorRows(),
                         "成功 " + execResult.getSuccessRows() + " 行"
                                 + (execResult.getErrorRows() > 0 ? "，失败 " + execResult.getErrorRows() + " 行" : "")
                                 + (execResult.getErrorLogPath() != null ? "。错误文件：" + execResult.getErrorLogPath() : "")));
             } else {
-                logMapper.update(completedLog(execLog, "FAIL", 0, "不支持的任务类型: " + taskType));
+                logMapper.updateById(completedLog(execLog, "FAIL", 0, "不支持的任务类型: " + taskType));
             }
         } catch (Exception e) {
             log.error("任务执行异常: configId={}", execLog.getConfigId(), e);
-            logMapper.update(completedLog(execLog, "FAIL", 0, e.getMessage()));
+            logMapper.updateById(completedLog(execLog, "FAIL", 0, e.getMessage()));
         }
     }
 
@@ -171,11 +174,11 @@ public class DataExchangeConfigController {
         }
         String executor = SecurityContextHolder.getCurrentUsername();
         for (Integer id : ids) {
-            DmpDataExchangeConfig config = configMapper.selectById(id.longValue());
+            TaskDataExchangeConfig config = configMapper.selectById(id.longValue());
             if (config == null) continue;
             String taskType = config.getTaskType();
             // 创建执行日志
-            DmpDataExchangeLog execLog = new DmpDataExchangeLog();
+            TaskDataExchangeLog execLog = new TaskDataExchangeLog();
             execLog.setId(KeyGenerator.getInternalKey());
             execLog.setConfigId(config.getId());
             execLog.setTaskType(taskType);
@@ -185,7 +188,7 @@ public class DataExchangeConfigController {
             execLog.setCreateTime(new Date());
             logMapper.insert(execLog);
             // 异步提交
-            final DmpDataExchangeLog logRef = execLog;
+            final TaskDataExchangeLog logRef = execLog;
             landTaskExecutor.submit(() -> executeTask(logRef, config, taskType));
         }
         return CommonResult.success("已提交 " + ids.size() + " 个任务");
@@ -194,7 +197,7 @@ public class DataExchangeConfigController {
     @Operation(summary = "下载异常文件")
     @PostMapping("/errorFile")
     public void errorFile(@RequestBody DataExchangeConfigDTO request, jakarta.servlet.http.HttpServletResponse response) throws Exception {
-        DmpDataExchangeConfig config = configMapper.selectById(request.getId());
+        TaskDataExchangeConfig config = configMapper.selectById(request.getId());
         if (config == null) {
             response.sendError(404, "配置不存在");
             return;
@@ -223,14 +226,11 @@ public class DataExchangeConfigController {
     @Operation(summary = "执行日志查询")
     @PostMapping("/logList")
     public CommonResult<?> logList(@RequestBody DataExchangeConfigDTO request) {
-        Map<String, Object> param = new HashMap<>();
-        param.put("configId", request.getId());
-
         int pageIndex = request.getPageIndex() > 0 ? request.getPageIndex() : 1;
         int pageSize = request.getPageSize() > 0 ? request.getPageSize() : 10;
         PageHelper.startPage(pageIndex, pageSize);
-        List<DmpDataExchangeLog> list = logMapper.selectList(param);
-        PageInfo<DmpDataExchangeLog> page = new PageInfo<>(list);
+        List<TaskDataExchangeLog> list = logMapper.selectList(request.getId(), null, null);
+        PageInfo<TaskDataExchangeLog> page = new PageInfo<>(list);
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", page.getList());
@@ -238,7 +238,7 @@ public class DataExchangeConfigController {
         return CommonResult.success(result);
     }
 
-    private DmpDataExchangeLog completedLog(DmpDataExchangeLog execLog, String status, int rows, String errorMsg) {
+    private TaskDataExchangeLog completedLog(TaskDataExchangeLog execLog, String status, int rows, String errorMsg) {
         Date now = new Date();
         execLog.setEndTime(now);
         execLog.setDurationSeconds((int) ((now.getTime() - execLog.getStartTime().getTime()) / 1000));
@@ -246,5 +246,11 @@ public class DataExchangeConfigController {
         execLog.setRowCount(rows);
         execLog.setErrorMsg(errorMsg);
         return execLog;
+    }
+
+    @Operation(summary = "数据数据流图")
+    @PostMapping("/lineage")
+    public CommonResult<?> lineage() {
+        return lineageService.getLineage();
     }
 }

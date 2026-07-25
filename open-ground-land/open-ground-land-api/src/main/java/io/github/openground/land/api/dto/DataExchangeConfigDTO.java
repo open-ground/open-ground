@@ -9,7 +9,7 @@ import lombok.EqualsAndHashCode;
  * 数据交换配置 DTO
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -66,6 +66,15 @@ public class DataExchangeConfigDTO extends BaseRequest {
 
     @Schema(description = "状态：ENABLED / DISABLED")
     private String taskStatus;
+
+    @Schema(description = "源文件目录ID（关联文件目录表）")
+    private Long sourceFileDirId;
+
+    @Schema(description = "目标文件目录ID（关联文件目录表）")
+    private Long targetFileDirId;
+
+    @Schema(description = "文件来源系统（FILE_TO_DB 时使用）")
+    private String sourceSystem;
 
     // 分页
     @Schema(description = "第几页")

@@ -1,12 +1,12 @@
 -- =============================================
 -- 数据交换中心 - 配置表 DDL（MySQL）
--- 表名：DMP_DATA_EXCHANGE_CONFIG
+-- 表名：TASK_DATA_EXCHANGE_CONFIG
 -- 说明：存储数据交换任务的配置信息，包括
 --       文件→库、库→文件、库→库三种模式
 -- =============================================
 
-DROP TABLE IF EXISTS `DMP_DATA_EXCHANGE_CONFIG`;
-CREATE TABLE `DMP_DATA_EXCHANGE_CONFIG` (
+DROP TABLE IF EXISTS `TASK_DATA_EXCHANGE_CONFIG`;
+CREATE TABLE `TASK_DATA_EXCHANGE_CONFIG` (
     `id`                BIGINT          NOT NULL COMMENT '主键ID',
     `task_name`         VARCHAR(200)    NOT NULL COMMENT '任务名称',
     `task_type`         VARCHAR(20)     NOT NULL COMMENT '任务类型：FILE_TO_DB-文件入库 DB_TO_FILE-库导出 DB_TO_DB-库迁移',
@@ -27,6 +27,9 @@ CREATE TABLE `DMP_DATA_EXCHANGE_CONFIG` (
     `header_enabled`    CHAR(1)                  DEFAULT '0' COMMENT '是否输出表头行（DB_TO_FILE）：0-否 1-是',
     `done_file_enabled` CHAR(1)                  DEFAULT '1' COMMENT '是否生成 .ok 标识文件：0-否 1-是',
     `export_mode`       VARCHAR(20)              DEFAULT 'FULL_TABLE' COMMENT '导出模式（DB_TO_FILE）：FULL_TABLE-整表 CONDITIONAL-条件 CUSTOM_SQL-自定义SQL',
+    `source_file_dir_id` BIGINT                  DEFAULT NULL COMMENT '源文件目录ID（关联 TASK_DATA_FILE_DIR），FILE_TO_DB 时使用',
+    `target_file_dir_id` BIGINT                  DEFAULT NULL COMMENT '目标文件目录ID（关联 TASK_DATA_FILE_DIR），DB_TO_FILE 时使用',
+    `source_system`     VARCHAR(100)              DEFAULT NULL COMMENT '文件来源系统（FILE_TO_DB 时使用，如：核心系统、信贷系统）',
     `del_flag`          CHAR(1)         NOT NULL DEFAULT '0' COMMENT '删除标记：0-正常 2-删除',
     `create_by`         VARCHAR(64)              DEFAULT NULL COMMENT '创建人',
     `create_time`       DATETIME                 DEFAULT NULL COMMENT '创建时间',
@@ -43,12 +46,12 @@ CREATE TABLE `DMP_DATA_EXCHANGE_CONFIG` (
 
 -- =============================================
 -- 数据交换中心 - 执行日志表 DDL（MySQL）
--- 表名：DMP_DATA_EXCHANGE_LOG
+-- 表名：TASK_DATA_EXCHANGE_LOG
 -- 说明：记录每次数据交换任务的执行历史和结果
 -- =============================================
 
-DROP TABLE IF EXISTS `DMP_DATA_EXCHANGE_LOG`;
-CREATE TABLE `DMP_DATA_EXCHANGE_LOG` (
+DROP TABLE IF EXISTS `TASK_DATA_EXCHANGE_LOG`;
+CREATE TABLE `TASK_DATA_EXCHANGE_LOG` (
      `id`            BIGINT          NOT NULL COMMENT '主键ID',
      `config_id`     BIGINT          NOT NULL COMMENT '关联配置ID',
      `task_type`     VARCHAR(20)     NOT NULL COMMENT '任务类型：FILE_TO_DB-文件入库 DB_TO_FILE-库导出',
@@ -66,3 +69,27 @@ CREATE TABLE `DMP_DATA_EXCHANGE_LOG` (
      INDEX `idx_run_status` (`run_status`),
      INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB COMMENT='数据交换执行日志表';
+
+-- =============================================
+-- 数据交换中心 - 文件目录管理表 DDL（MySQL）
+-- 表名：TASK_DATA_FILE_DIR
+-- 说明：统一管理数据交换中用到的文件目录路径，
+--       配置任务时选择目录+输入文件名，一改全改
+-- =============================================
+
+DROP TABLE IF EXISTS `TASK_DATA_FILE_DIR`;
+CREATE TABLE `TASK_DATA_FILE_DIR` (
+    `id`            BIGINT          NOT NULL COMMENT '主键ID',
+    `dir_name`      VARCHAR(100)    NOT NULL COMMENT '目录名称（便于识别，如：数据导入目录、导出目录）',
+    `dir_path`      VARCHAR(500)    NOT NULL COMMENT '目录路径（如：/data/files/input）',
+    `dir_type`      VARCHAR(20)     DEFAULT 'LOCAL' COMMENT '目录类型：LOCAL-本地 SFTP-远程SFTP FTP-远程FTP',
+    `remark`        VARCHAR(500)             DEFAULT NULL COMMENT '备注',
+    `del_flag`      CHAR(1)         NOT NULL DEFAULT '0' COMMENT '删除标记：0-正常 1-删除',
+    `create_by`     VARCHAR(64)              DEFAULT NULL COMMENT '创建人',
+    `create_time`   DATETIME                 DEFAULT NULL COMMENT '创建时间',
+    `update_by`     VARCHAR(64)              DEFAULT NULL COMMENT '更新人',
+    `update_time`   DATETIME                 DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_dir_type` (`dir_type`),
+    INDEX `idx_del_flag` (`del_flag`)
+) ENGINE=InnoDB COMMENT='文件目录管理表';

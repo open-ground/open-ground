@@ -5,7 +5,9 @@ import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.datasource.service.TableMetadataService;
 import io.github.openground.common.jdbc.DynamicJdbcTemplate;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskFileDir;
+import io.github.openground.land.dmp.mapper.TaskFileDirMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -32,7 +34,7 @@ import java.util.regex.Pattern;
  * 采用生产者-消费者模型（BlockingQueue），读文件与写数据库并行执行。</p>
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Slf4j
 @Component
@@ -49,14 +51,17 @@ public class FileToDbExecutor {
     @Autowired
     private TableMetadataService tableMetadataService;
 
+    @Autowired
+    private TaskFileDirMapper fileDirMapper;
+
     /**
      * 执行文件入库
      *
      * @param config 任务配置
      * @return 执行结果（含成功行数、失败行数、错误文件路径）
      */
-    public ExecuteResult execute(DmpDataExchangeConfig config) {
-        String filePath = normalizePath(DatePathResolver.resolve(config.getSourceFilePath()));
+    public ExecuteResult execute(TaskDataExchangeConfig config) {
+        String filePath = resolveFilePath(config.getSourceFileDirId(), config.getSourceFilePath());
         String targetTable = config.getTargetTable();
         String delimiter = config.getFileDelimiter() != null ? config.getFileDelimiter() : "|";
         String encoding = config.getFileEncoding() != null ? config.getFileEncoding() : "UTF-8";
@@ -399,6 +404,24 @@ public class FileToDbExecutor {
     private static String normalizePath(String path) {
         if (path == null) return null;
         return path.replace("\\", "/");
+    }
+
+    /**
+     * 解析文件完整路径：若 dirId 非空，拼接目录路径 + 文件名；否则直接用 filePath（向后兼容）
+     */
+    private String resolveFilePath(Long dirId, String filePath) {
+        String resolved = DatePathResolver.resolve(filePath);
+        if (dirId != null) {
+            TaskFileDir dir = fileDirMapper.selectById(dirId);
+            if (dir != null && dir.getDirPath() != null) {
+                String dirPath = normalizePath(dir.getDirPath());
+                if (!dirPath.endsWith("/")) {
+                    dirPath = dirPath + "/";
+                }
+                resolved = dirPath + resolved;
+            }
+        }
+        return normalizePath(resolved);
     }
 
     private static Object convertValue(String val, String targetType) {

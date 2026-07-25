@@ -5,8 +5,8 @@ import com.github.pagehelper.PageInfo;
 import io.github.openground.base.dto.CommonResult;
 import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.land.api.dto.DataExchangeConfigDTO;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
-import io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
+import io.github.openground.land.dmp.mapper.TaskDataExchangeConfigMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,26 +21,22 @@ import java.util.Map;
  * 数据交换配置服务
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Slf4j
 @Service
-public class DataExchangeConfigService {
+public class TaskDataExchangeConfigService {
 
     @Autowired
-    private DmpDataExchangeConfigMapper configMapper;
+    private TaskDataExchangeConfigMapper configMapper;
 
     public CommonResult<?> list(DataExchangeConfigDTO request) {
-        Map<String, Object> param = new HashMap<>();
-        param.put("taskName", request.getTaskName());
-        param.put("taskType", request.getTaskType());
-        param.put("taskStatus", request.getTaskStatus());
-
         int pageIndex = request.getPageIndex() > 0 ? request.getPageIndex() : 1;
         int pageSize = request.getPageSize() > 0 ? request.getPageSize() : 10;
         PageHelper.startPage(pageIndex, pageSize);
-        List<DmpDataExchangeConfig> list = configMapper.selectList(param);
-        PageInfo<DmpDataExchangeConfig> page = new PageInfo<>(list);
+        List<TaskDataExchangeConfig> list = configMapper.selectList(
+                request.getTaskName(), request.getTaskType(), request.getTaskStatus(), null);
+        PageInfo<TaskDataExchangeConfig> page = new PageInfo<>(list);
 
         Map<String, Object> result = new HashMap<>();
         result.put("resultlist", page.getList());
@@ -49,7 +45,7 @@ public class DataExchangeConfigService {
     }
 
     public CommonResult<?> getById(Long id) {
-        DmpDataExchangeConfig config = configMapper.selectById(id);
+        TaskDataExchangeConfig config = configMapper.selectById(id);
         if (config == null) {
             return CommonResult.error("1000", "配置不存在");
         }
@@ -57,7 +53,7 @@ public class DataExchangeConfigService {
     }
 
     public CommonResult<?> save(DataExchangeConfigDTO request) {
-        DmpDataExchangeConfig entity = new DmpDataExchangeConfig();
+        TaskDataExchangeConfig entity = new TaskDataExchangeConfig();
         BeanUtils.copyProperties(request, entity);
         Date now = new Date();
 
@@ -67,11 +63,12 @@ public class DataExchangeConfigService {
             if (request.getSysHead() != null) {
                 entity.setUpdateBy(request.getSysHead().getUserId());
             }
-            configMapper.update(entity);
+            configMapper.updateById(entity);
         } else {
             // 新增
             entity.setId(KeyGenerator.getInternalKey());
             entity.setTaskStatus("ENABLED");
+            entity.setDelFlag("0");
             entity.setCreateTime(now);
             entity.setUpdateTime(now);
             if (request.getSysHead() != null) {

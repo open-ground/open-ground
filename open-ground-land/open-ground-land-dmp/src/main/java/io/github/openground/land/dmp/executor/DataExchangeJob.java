@@ -2,9 +2,9 @@ package io.github.openground.land.dmp.executor;
 
 import io.github.openground.land.api.domain.JobOut;
 import io.github.openground.land.api.job.JobEngine;
-import io.github.openground.land.dmp.entity.DmpDataExchangeConfig;
+import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
 import io.github.openground.land.dmp.entity.TaskType;
-import io.github.openground.land.dmp.mapper.DmpDataExchangeConfigMapper;
+import io.github.openground.land.dmp.mapper.TaskDataExchangeConfigMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,14 +18,14 @@ import java.util.Map;
  * <p>继承 JobEngine，由 land 调度框架统一调度执行</p>
  *
  * @author jack.zhang
- * @since 2026-07-17
+ * @since 1.0.6
  */
 @Slf4j
 @Component("dataExchangeJob")
 public class DataExchangeJob extends JobEngine {
 
     @Autowired
-    private DmpDataExchangeConfigMapper configMapper;
+    private TaskDataExchangeConfigMapper configMapper;
 
     @Autowired
     private FileToDbExecutor fileToDbExecutor;
@@ -67,7 +67,7 @@ public class DataExchangeJob extends JobEngine {
             }
 
             Long configId = Long.valueOf(configIdObj.toString());
-            DmpDataExchangeConfig config = configMapper.selectById(configId);
+            TaskDataExchangeConfig config = configMapper.selectById(configId);
             if (config == null) {
                 out.setMessage("配置不存在: " + configId);
                 return out;
@@ -104,7 +104,7 @@ public class DataExchangeJob extends JobEngine {
 
     private void executeSingle(Long configId) {
         try {
-            DmpDataExchangeConfig config = configMapper.selectById(configId);
+            TaskDataExchangeConfig config = configMapper.selectById(configId);
             if (config == null) {
                 log.warn("配置不存在: {}", configId);
                 return;
