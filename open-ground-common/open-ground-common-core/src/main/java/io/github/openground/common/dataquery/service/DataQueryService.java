@@ -359,7 +359,7 @@ public class DataQueryService {
      */
     private String wrapCountSql(String sql) {
         String trimmed = stripSemicolon(sql);
-        return "SELECT COUNT(0) AS total FROM (" + trimmed + ") _count_wrapper";
+        return "SELECT COUNT(0) AS total FROM (" + trimmed + ") count_wrapper";
     }
 
     /**

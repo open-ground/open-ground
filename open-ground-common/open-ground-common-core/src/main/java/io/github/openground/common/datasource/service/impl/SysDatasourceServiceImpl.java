@@ -148,7 +148,6 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
     public Connection getConnection(SysDatasourceDO ds) {
         try {
             String url = resolveJdbcUrl(ds);
-            String password = decrypt(ds.getPassword());
             String driverClass = ds.getDriverClassName();
             if (driverClass != null && !driverClass.isEmpty()) {
                 try {
@@ -159,7 +158,7 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
             }
             Properties props = new Properties();
             props.setProperty("user", ds.getUsername());
-            props.setProperty("password", password);
+            props.setProperty("password", ds.getPassword());
             props.setProperty("connectTimeout", "5000");
             props.setProperty("socketTimeout", "10000");
             return DriverManager.getConnection(url, props);

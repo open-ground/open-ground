@@ -72,28 +72,7 @@ public class DbCheckController {
     @Autowired
     private DbCheckLogService dbCheckLogService;
 
-    /**
-     * 执行数据库检查（不执行同步）
-     *
-     * <p>检查表结构、数据和注释差异，返回结构化差异报告。
-     * 此操作不会对数据库做任何修改。
-     *
-     * @return 检查结果报告
-     */
-    @Operation(summary = "执行数据库检查")
-    @PostMapping("/check")
-    public ResponseEntity<?> runCheck() {
-        log.info("手动触发 DbCheck 检查...");
-        long start = System.currentTimeMillis();
-        DbCheckResult result = dbCheckService.runCheck();
-        saveCheckLog("check", result, false, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage("检查完成")
-                        .setData(result)
-        );
-    }
+    
 
     /**
      * 执行数据库检查并同步
@@ -106,7 +85,7 @@ public class DbCheckController {
      */
     @Operation(summary = "执行数据库检查并同步")
     @PostMapping("/sync")
-    public ResponseEntity<?> runSync(@RequestBody Map<String, Object> params) {
+    public CommonResult runSync(@RequestBody Map<String, Object> params) {
         boolean apply = Boolean.TRUE.equals(params.get("apply"));
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
@@ -117,21 +96,17 @@ public class DbCheckController {
         if (datasourceId == null || datasourceId == 0) {
             DbCheckResult result = dbCheckService.runCheckWithSync(apply);
             saveCheckLog("sync", result, apply, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage(apply ? "检查并同步完成" : "检查完成（未执行同步）")
-                            .setData(result)
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage(apply ? "检查并同步完成" : "检查完成（未执行同步）")
+                    .setData(result);
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
@@ -146,29 +121,23 @@ public class DbCheckController {
                         result.setExecuted(true);
                     }
                     saveCheckLog("sync", result, apply, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-                    return ResponseEntity.ok(
-                            new CommonResult()
-                                    .setCode(ErrorCode.SUCCESS)
-                                    .setMessage(apply ? "检查并同步完成" : "检查完成")
-                                    .setData(result)
-                    );
+                    return new CommonResult()
+                            .setCode(ErrorCode.SUCCESS)
+                            .setMessage(apply ? "检查并同步完成" : "检查完成")
+                            .setData(result);
                 }
             } catch (Exception e) {
                 log.error("外部数据源同步失败 dsId={}: {}", datasourceId, e.getMessage());
                 saveCheckLog("sync", new DbCheckResult(), apply, e.getMessage(), System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("同步失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("同步失败: " + e.getMessage());
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -178,7 +147,7 @@ public class DbCheckController {
      */
     @Operation(summary = "获取 DbCheck 配置状态")
     @GetMapping("/status")
-    public ResponseEntity<?> getStatus() {
+    public CommonResult getStatus() {
         Map<String, Object> status = new HashMap<>();
         status.put("enabled", dbCheckProperties.isEnabled());
         status.put("mode", dbCheckProperties.getMode());
@@ -188,12 +157,10 @@ public class DbCheckController {
         status.put("databaseType", dbCheckService.resolveDbType());
         status.put("locations", dbCheckProperties.getLocations());
         status.put("hasExternalDatasources", datasourceProviders != null && !datasourceProviders.isEmpty());
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage(ErrorCode.SUCCESS_MSG)
-                        .setData(status)
-        );
+        return new CommonResult()
+                .setCode(ErrorCode.SUCCESS)
+                .setMessage(ErrorCode.SUCCESS_MSG)
+                .setData(status);
     }
 
     /**
@@ -203,7 +170,7 @@ public class DbCheckController {
      */
     @Operation(summary = "获取可用数据源列表")
     @GetMapping("/datasources")
-    public ResponseEntity<?> listDatasources() {
+    public CommonResult listDatasources() {
         List<Map<String, Object>> list = new ArrayList<>();
 
         // 1. 内置数据源（始终可用）
@@ -232,81 +199,13 @@ public class DbCheckController {
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage(ErrorCode.SUCCESS_MSG)
-                        .setData(list)
-        );
+        return new CommonResult()
+                .setCode(ErrorCode.SUCCESS)
+                .setMessage(ErrorCode.SUCCESS_MSG)
+                .setData(list);
     }
 
-    /**
-     * 对指定数据源执行数据库检查
-     *
-     * <p>datasourceId=0 → 内置数据源（走原有 runCheck 逻辑）
-     * <p>datasourceId>0 → 从 Provider 获取连接执行检查
-     *
-     * @param datasourceId 数据源ID（0=内置）
-     * @return 检查结果报告
-     */
-    @Operation(summary = "对指定数据源执行数据库检查")
-    @PostMapping("/check/{datasourceId}")
-    public ResponseEntity<?> runCheckForDatasource(@PathVariable Long datasourceId) {
-        long start = System.currentTimeMillis();
-        // 内置数据源 → 走原有逻辑
-        if (datasourceId == null || datasourceId == 0) {
-            DbCheckResult result = dbCheckService.runCheck();
-            saveCheckLog("check", result, false, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("检查完成")
-                            .setData(result)
-            );
-        }
-
-        // 外部数据源 → 从 Provider 获取连接
-        if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
-        }
-
-        for (DbCheckDatasourceProvider provider : datasourceProviders) {
-            try {
-                String dbType = provider.getDbType(datasourceId);
-                if (dbType == null) continue;
-
-                log.info("使用外部数据源检查: dsId={}, dbType={}", datasourceId, dbType);
-                try (Connection conn = provider.getConnection(datasourceId)) {
-                    DbCheckResult result = dbCheckService.runCheckWithConnection(conn, dbType);
-                    saveCheckLog("check", result, false, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-                    return ResponseEntity.ok(
-                            new CommonResult()
-                                    .setCode(ErrorCode.SUCCESS)
-                                    .setMessage("检查完成")
-                                    .setData(result)
-                    );
-                }
-            } catch (Exception e) {
-                log.error("外部数据源检查失败 dsId={}: {}", datasourceId, e.getMessage());
-                saveCheckLog("check", new DbCheckResult(), false, e.getMessage(), System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("检查失败: " + e.getMessage())
-                );
-            }
-        }
-
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
-    }
+    
 
     /**
      * 为勾选的表生成同步 SQL
@@ -316,40 +215,34 @@ public class DbCheckController {
      */
     @Operation(summary = "为勾选的表生成同步 SQL")
     @PostMapping("/generate-sql")
-    public ResponseEntity<?> generateSql(@RequestBody Map<String, Object> params) {
+    public CommonResult generateSql(@RequestBody Map<String, Object> params) {
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
         @SuppressWarnings("unchecked")
         List<String> tableNames = (List<String>) params.get("tableNames");
 
         if (tableNames == null || tableNames.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("未选择任何表")
-                            .setData(Collections.emptyList())
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("未选择任何表")
+                    .setData(Collections.emptyList());
         }
 
         // 内置数据源
         if (datasourceId == null || datasourceId == 0) {
             String dbType = dbCheckService.resolveDbType();
             List<String> sqls = dbCheckService.generateSqlsForSelected(dbType, tableNames);
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("已生成 " + sqls.size() + " 条同步 SQL")
-                            .setData(sqls)
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("已生成 " + sqls.size() + " 条同步 SQL")
+                    .setData(sqls);
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
@@ -359,28 +252,22 @@ public class DbCheckController {
 
                 try (Connection conn = provider.getConnection(datasourceId)) {
                     List<String> sqls = dbCheckService.generateSqlsForSelectedWithConn(conn, dbType, tableNames);
-                    return ResponseEntity.ok(
-                            new CommonResult()
-                                    .setCode(ErrorCode.SUCCESS)
-                                    .setMessage("已生成 " + sqls.size() + " 条同步 SQL")
-                                    .setData(sqls)
-                    );
+                    return new CommonResult()
+                            .setCode(ErrorCode.SUCCESS)
+                            .setMessage("已生成 " + sqls.size() + " 条同步 SQL")
+                            .setData(sqls);
                 }
             } catch (Exception e) {
                 log.error("外部数据源生成SQL失败 dsId={}: {}", datasourceId, e.getMessage());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("生成SQL失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("生成SQL失败: " + e.getMessage());
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -394,19 +281,17 @@ public class DbCheckController {
      */
     @Operation(summary = "为勾选的表生成完整建表 SQL")
     @PostMapping("/generate-full-sql")
-    public ResponseEntity<?> generateFullSql(@RequestBody Map<String, Object> params) {
+    public CommonResult generateFullSql(@RequestBody Map<String, Object> params) {
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
         @SuppressWarnings("unchecked")
         List<String> tableNames = (List<String>) params.get("tableNames");
 
         if (tableNames == null || tableNames.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("未选择任何表")
-                            .setData(Collections.emptyList())
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("未选择任何表")
+                    .setData(Collections.emptyList());
         }
 
         long start = System.currentTimeMillis();
@@ -417,21 +302,17 @@ public class DbCheckController {
             String dbType = dbCheckService.resolveDbType();
             List<String> sqls = dbCheckService.generateFullCreateSqls(dbType, tableNames);
             saveCheckLog("sync", makeLogResult(sqls.size()), false, null, System.currentTimeMillis() - start, createBy);
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("已生成 " + sqls.size() + " 条完整建表 SQL")
-                            .setData(sqls)
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("已生成 " + sqls.size() + " 条完整建表 SQL")
+                    .setData(sqls);
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
@@ -442,29 +323,23 @@ public class DbCheckController {
                 try (Connection conn = provider.getConnection(datasourceId)) {
                     List<String> sqls = dbCheckService.generateFullCreateSqlsWithConn(conn, dbType, tableNames);
                     saveCheckLog("sync", makeLogResult(sqls.size()), false, null, System.currentTimeMillis() - start, createBy);
-                    return ResponseEntity.ok(
-                            new CommonResult()
-                                    .setCode(ErrorCode.SUCCESS)
-                                    .setMessage("已生成 " + sqls.size() + " 条完整建表 SQL")
-                                    .setData(sqls)
-                    );
+                    return new CommonResult()
+                            .setCode(ErrorCode.SUCCESS)
+                            .setMessage("已生成 " + sqls.size() + " 条完整建表 SQL")
+                            .setData(sqls);
                 }
             } catch (Exception e) {
                 log.error("外部数据源生成完整SQL失败 dsId={}: {}", datasourceId, e.getMessage());
                 saveCheckLog("sync", makeLogResult(0), false, e.getMessage(), System.currentTimeMillis() - start, createBy);
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("生成SQL失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("生成SQL失败: " + e.getMessage());
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -478,18 +353,16 @@ public class DbCheckController {
      */
     @Operation(summary = "为勾选的表生成增量 SQL 并立即执行到数据库")
     @PostMapping("/sync-tables")
-    public ResponseEntity<?> syncTables(@RequestBody Map<String, Object> params) {
+    public CommonResult syncTables(@RequestBody Map<String, Object> params) {
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
         @SuppressWarnings("unchecked")
         List<String> tableNames = (List<String>) params.get("tableNames");
 
         if (tableNames == null || tableNames.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("未选择任何表")
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("未选择任何表");
         }
 
         long start = System.currentTimeMillis();
@@ -501,30 +374,24 @@ public class DbCheckController {
                 String dbType = dbCheckService.resolveDbType();
                 int sqlCount = dbCheckService.syncSelectedTables(dbType, tableNames);
                 saveCheckLog("sync", makeLogResult(sqlCount), true, null, System.currentTimeMillis() - start, createBy);
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(ErrorCode.SUCCESS)
-                                .setMessage("成功同步 " + tableNames.size() + " 个表，执行 " + sqlCount + " 条 SQL")
-                                .setData(Collections.singletonMap("sqlCount", sqlCount))
-                );
+                return new CommonResult()
+                        .setCode(ErrorCode.SUCCESS)
+                        .setMessage("成功同步 " + tableNames.size() + " 个表，执行 " + sqlCount + " 条 SQL")
+                        .setData(Collections.singletonMap("sqlCount", sqlCount));
             } catch (Exception e) {
                 log.error("同步表结构失败: {}", e.getMessage(), e);
                 saveCheckLog("sync", makeLogResult(0), true, e.getMessage(), System.currentTimeMillis() - start, createBy);
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("同步失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("同步失败: " + e.getMessage());
             }
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
@@ -535,28 +402,22 @@ public class DbCheckController {
                 try (Connection conn = provider.getConnection(datasourceId)) {
                     int sqlCount = dbCheckService.syncSelectedTablesWithConn(conn, dbType, tableNames);
                     saveCheckLog("sync", makeLogResult(sqlCount), true, null, System.currentTimeMillis() - start, createBy);
-                    return ResponseEntity.ok(
-                            new CommonResult()
-                                    .setCode(ErrorCode.SUCCESS)
-                                    .setMessage("成功同步 " + tableNames.size() + " 个表，执行 " + sqlCount + " 条 SQL")
-                    );
+                    return new CommonResult()
+                            .setCode(ErrorCode.SUCCESS)
+                            .setMessage("成功同步 " + tableNames.size() + " 个表，执行 " + sqlCount + " 条 SQL");
                 }
             } catch (Exception e) {
                 log.error("外部数据源同步表结构失败 dsId={}: {}", datasourceId, e.getMessage());
                 saveCheckLog("sync", makeLogResult(0), true, e.getMessage(), System.currentTimeMillis() - start, createBy);
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("同步失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("同步失败: " + e.getMessage());
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -567,18 +428,16 @@ public class DbCheckController {
      */
     @Operation(summary = "执行同步 SQL")
     @PostMapping("/execute-sql")
-    public ResponseEntity<?> executeSql(@RequestBody Map<String, Object> params) {
+    public CommonResult executeSql(@RequestBody Map<String, Object> params) {
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
         @SuppressWarnings("unchecked")
         List<String> sqls = (List<String>) params.get("sqls");
 
         if (sqls == null || sqls.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("无 SQL 需要执行")
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("无 SQL 需要执行");
         }
 
         log.info("执行同步 SQL: dsId={}, sqlCount={}", datasourceId, sqls.size());
@@ -589,29 +448,23 @@ public class DbCheckController {
             try {
                 dbCheckService.executeSqls(sqls);
                 saveCheckLog("sync", makeLogResult(sqls.size()), true, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(ErrorCode.SUCCESS)
-                                .setMessage("成功执行 " + sqls.size() + " 条 SQL")
-                );
+                return new CommonResult()
+                        .setCode(ErrorCode.SUCCESS)
+                        .setMessage("成功执行 " + sqls.size() + " 条 SQL");
             } catch (Exception e) {
                 log.error("内置数据源执行SQL失败: {}", e.getMessage(), e);
                 saveCheckLog("sync", makeLogResult(sqls.size()), true, e.getMessage(), System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("执行失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("执行失败: " + e.getMessage());
             }
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
@@ -621,27 +474,21 @@ public class DbCheckController {
 
                 provider.executeSqls(datasourceId, sqls);
                 saveCheckLog("sync", makeLogResult(sqls.size()), true, null, System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(ErrorCode.SUCCESS)
-                                .setMessage("成功执行 " + sqls.size() + " 条 SQL")
-                );
+                return new CommonResult()
+                        .setCode(ErrorCode.SUCCESS)
+                        .setMessage("成功执行 " + sqls.size() + " 条 SQL");
             } catch (Exception e) {
                 log.error("外部数据源执行SQL失败 dsId={}: {}", datasourceId, e.getMessage());
                 saveCheckLog("sync", makeLogResult(sqls.size()), true, e.getMessage(), System.currentTimeMillis() - start, getCurrentUserDisplay());
-                return ResponseEntity.ok(
-                        new CommonResult()
-                                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                                .setMessage("执行失败: " + e.getMessage())
-                );
+                return new CommonResult()
+                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                        .setMessage("执行失败: " + e.getMessage());
             }
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -653,14 +500,12 @@ public class DbCheckController {
      */
     @Operation(summary = "获取可用脚本文件列表")
     @GetMapping("/scripts")
-    public ResponseEntity<?> listScripts() {
+    public CommonResult listScripts() {
         List<ScriptInfo> scripts = dbCheckService.getScriptList();
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage(ErrorCode.SUCCESS_MSG)
-                        .setData(scripts)
-        );
+        return new CommonResult()
+                .setCode(ErrorCode.SUCCESS)
+                .setMessage(ErrorCode.SUCCESS_MSG)
+                .setData(scripts);
     }
 
     /**
@@ -703,7 +548,7 @@ public class DbCheckController {
      */
     @Operation(summary = "异步执行数据库检查（支持内外数据源、指定脚本）")
     @PostMapping("/async/check")
-    public ResponseEntity<?> asyncCheck(@RequestBody Map<String, Object> params) {
+    public CommonResult asyncCheck(@RequestBody Map<String, Object> params) {
         Long datasourceId = params.get("datasourceId") != null
                 ? Long.valueOf(params.get("datasourceId").toString()) : 0L;
         @SuppressWarnings("unchecked")
@@ -715,44 +560,34 @@ public class DbCheckController {
         if (datasourceId == null || datasourceId == 0) {
             String dbType = dbCheckService.resolveDbType();
             String taskId = asyncCheckService.startCheck(dbType, tableNames, scriptKeys, getCurrentUserDisplay());
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("任务已提交")
-                            .setData(Collections.singletonMap("taskId", taskId))
-            );
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("任务已提交")
+                    .setData(Collections.singletonMap("taskId", taskId));
         }
 
         // 外部数据源
         if (datasourceProviders == null || datasourceProviders.isEmpty()) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("没有可用的外部数据源提供者")
-            );
+            return new CommonResult()
+                    .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                    .setMessage("没有可用的外部数据源提供者");
         }
 
         for (DbCheckDatasourceProvider provider : datasourceProviders) {
             String dbType = provider.getDbType(datasourceId);
             if (dbType == null) continue;
 
-            log.info("异步检查外部数据源: dsId={}, dbType={}, scriptKeys={}",
-                    datasourceId, dbType, scriptKeys != null ? scriptKeys.size() + "个" : "全部");
-            String taskId = asyncCheckService.startCheckWithProvider(
-                    provider, datasourceId, dbType, tableNames, scriptKeys, getCurrentUserDisplay());
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(ErrorCode.SUCCESS)
-                            .setMessage("任务已提交")
-                            .setData(Collections.singletonMap("taskId", taskId))
-            );
+            log.info("异步检查外部数据源: dsId={}, dbType={}, scriptKeys={}", datasourceId, dbType, scriptKeys != null ? scriptKeys.size() + "个" : "全部");
+            String taskId = asyncCheckService.startCheckWithProvider(provider, datasourceId, dbType, tableNames, scriptKeys, getCurrentUserDisplay());
+            return new CommonResult()
+                    .setCode(ErrorCode.SUCCESS)
+                    .setMessage("任务已提交")
+                    .setData(Collections.singletonMap("taskId", taskId));
         }
 
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                        .setMessage("未找到指定的数据源: " + datasourceId)
-        );
+        return new CommonResult()
+                .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
+                .setMessage("未找到指定的数据源: " + datasourceId);
     }
 
     /**
@@ -763,21 +598,12 @@ public class DbCheckController {
      */
     @Operation(summary = "查询异步检查进度")
     @GetMapping("/async/progress/{taskId}")
-    public ResponseEntity<?> getAsyncProgress(@PathVariable String taskId) {
+    public CommonResult getAsyncProgress(@PathVariable String taskId) {
         CheckProgress progress = asyncCheckService.getProgress(taskId);
         if (progress == null) {
-            return ResponseEntity.ok(
-                    new CommonResult()
-                            .setCode(String.valueOf(ErrorCode.DATABASE_EXCEPTION))
-                            .setMessage("任务不存在")
-            );
+            return new CommonResult().error(ErrorCode.DATABASE_EXCEPTION, "任务不存在");
         }
-        return ResponseEntity.ok(
-                new CommonResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage("查询成功")
-                        .setData(progress)
-        );
+        return new CommonResult().success(progress);
     }
 
     /**
@@ -789,22 +615,14 @@ public class DbCheckController {
      */
     @Operation(summary = "分页查询操作日志")
     @GetMapping("/log")
-    public ResponseEntity<?> listLogs(
+    public PaginatedResult listLogs(
             @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", defaultValue = "20") int pageSize) {
         DbCheckLogDO query = new DbCheckLogDO();
         query.setPageNum(pageNum);
         query.setPageSize(pageSize);
         PageInfo<DbCheckLogDO> page = dbCheckLogService.pageList(query);
-        return ResponseEntity.ok(
-                new PaginatedResult()
-                        .setCode(ErrorCode.SUCCESS)
-                        .setMessage(ErrorCode.SUCCESS_MSG)
-                        .setData(page.getList())
-                        .setCurrentPage(page.getPageNum())
-                        .setTotalPage(page.getPages())
-                        .setTotalCount(page.getTotal())
-        );
+        return PaginatedResult.success(page.getList(), page.getPageNum(), page.getTotal(), pageSize);
     }
 
     /**
@@ -828,7 +646,7 @@ public class DbCheckController {
      */
     private String getCurrentUserDisplay() {
         try {
-            return SecurityContextHolder.getCurrentUserId() + "/" + SecurityContextHolder.getCurrentUsername();
+            return SecurityContextHolder.getCurrentDisplayName();
         } catch (Exception e) {
             log.warn("获取当前用户失败，使用 system 兜底");
         }

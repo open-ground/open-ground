@@ -5,6 +5,7 @@ import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.datasource.service.TableMetadataService;
 import io.github.openground.common.jdbc.DynamicJdbcTemplate;
+import io.github.openground.common.jdbc.SqlUtils;
 import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
 import io.github.openground.land.dmp.entity.TaskFileDir;
 import io.github.openground.land.dmp.mapper.TaskFileDirMapper;
@@ -15,11 +16,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.sql.Statement;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -424,75 +422,11 @@ public class FileToDbExecutor {
         return normalizePath(resolved);
     }
 
+    /**
+     * 类型转换：委托 {@link SqlUtils#convertValue}，将文件字符串值转为目标列 Java 类型
+     */
     private static Object convertValue(String val, String targetType) {
-        if (val == null || val.isEmpty()) return null;
-        String trimmed = val.trim();
-
-        // 数值类型
-        if ("INTEGER".equalsIgnoreCase(targetType) || "INT".equalsIgnoreCase(targetType)
-                || "BIGINT".equalsIgnoreCase(targetType) || "NUMBER".equalsIgnoreCase(targetType)
-                || "SMALLINT".equalsIgnoreCase(targetType) || "TINYINT".equalsIgnoreCase(targetType)) {
-            try {
-                return Long.parseLong(trimmed);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "数值转换失败: 值='" + val + "', 目标类型=" + targetType, e);
-            }
-        }
-        if ("DECIMAL".equalsIgnoreCase(targetType) || "FLOAT".equalsIgnoreCase(targetType)
-                || "DOUBLE".equalsIgnoreCase(targetType) || "NUMERIC".equalsIgnoreCase(targetType)) {
-            try {
-                return Double.parseDouble(trimmed);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "数值转换失败: 值='" + val + "', 目标类型=" + targetType, e);
-            }
-        }
-
-        // 日期/时间类型：自动识别常见格式
-        if ("DATE".equalsIgnoreCase(targetType)) {
-            return parseDate(trimmed);
-        }
-        if ("DATETIME".equalsIgnoreCase(targetType) || "TIMESTAMP".equalsIgnoreCase(targetType)) {
-            return parseTimestamp(trimmed);
-        }
-
-        // 字符串类型：去前后空格后返回
-        return trimmed;
-    }
-
-    /**
-     * 尝试常见日期格式解析
-     */
-    private static java.sql.Date parseDate(String val) {
-        String[] patterns = {"yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd", "yyyy-MM", "yyyyMM"};
-        for (String pattern : patterns) {
-            try {
-                Date d = new SimpleDateFormat(pattern).parse(val);
-                return new java.sql.Date(d.getTime());
-            } catch (Exception ignored) {
-            }
-        }
-        throw new IllegalArgumentException("日期转换失败: 值='" + val + "'，支持的格式:"
-                + " yyyy-MM-dd, yyyy/MM/dd, yyyyMMdd");
-    }
-
-    /**
-     * 尝试常见时间戳格式解析
-     */
-    private static Timestamp parseTimestamp(String val) {
-        String[] patterns = {"yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss",
-                "yyyy-MM-dd'T'HH:mm:ss", "yyyyMMddHHmmss",
-                "yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd"};
-        for (String pattern : patterns) {
-            try {
-                Date d = new SimpleDateFormat(pattern).parse(val);
-                return new Timestamp(d.getTime());
-            } catch (Exception ignored) {
-            }
-        }
-        throw new IllegalArgumentException("时间戳转换失败: 值='" + val + "'，支持的格式:"
-                + " yyyy-MM-dd HH:mm:ss, yyyyMMddHHmmss");
+        return SqlUtils.convertValue(val, targetType);
     }
 
     public static class ColumnMapping {

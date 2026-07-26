@@ -4,6 +4,7 @@ import io.github.openground.base.exception.CommonException;
 import io.github.openground.common.datasource.entity.SysDatasourceDO;
 import io.github.openground.common.datasource.mapper.SysDatasourceMapper;
 import io.github.openground.common.jdbc.DynamicJdbcTemplate;
+import io.github.openground.common.jdbc.SqlUtils;
 import io.github.openground.land.dmp.entity.TaskDataExchangeConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -381,71 +382,10 @@ public class DbToDbExecutor {
     }
 
     /**
-     * 类型转换：将源库读出的 Java 值转为适配目标库 SQL 类型的值
+     * 类型转换：委托 {@link SqlUtils#convertValue}，将源库读出的 Java 值转为适配目标库 SQL 类型的值
      */
     private static Object convertValue(Object val, String targetType) {
-        if (val == null) return null;
-        if (targetType == null) return val;
-
-        String strVal = val.toString().trim();
-        if (strVal.isEmpty()) return null;
-
-        if ("INTEGER".equalsIgnoreCase(targetType) || "INT".equalsIgnoreCase(targetType)
-                || "BIGINT".equalsIgnoreCase(targetType) || "NUMBER".equalsIgnoreCase(targetType)
-                || "SMALLINT".equalsIgnoreCase(targetType) || "TINYINT".equalsIgnoreCase(targetType)) {
-            if (val instanceof Number) return ((Number) val).longValue();
-            try {
-                return Long.parseLong(strVal);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("数值转换失败: 值='" + val + "', 目标类型=" + targetType, e);
-            }
-        }
-        if ("DECIMAL".equalsIgnoreCase(targetType) || "FLOAT".equalsIgnoreCase(targetType)
-                || "DOUBLE".equalsIgnoreCase(targetType) || "NUMERIC".equalsIgnoreCase(targetType)) {
-            if (val instanceof Number) return ((Number) val).doubleValue();
-            try {
-                return Double.parseDouble(strVal);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("数值转换失败: 值='" + val + "', 目标类型=" + targetType, e);
-            }
-        }
-        // 日期/时间类型
-        if ("DATE".equalsIgnoreCase(targetType)) {
-            if (val instanceof java.sql.Date) return val;
-            if (val instanceof java.util.Date) return new java.sql.Date(((java.util.Date) val).getTime());
-            return parseDate(strVal);
-        }
-        if ("DATETIME".equalsIgnoreCase(targetType) || "TIMESTAMP".equalsIgnoreCase(targetType)) {
-            if (val instanceof java.sql.Timestamp) return val;
-            if (val instanceof java.util.Date) return new java.sql.Timestamp(((java.util.Date) val).getTime());
-            return parseTimestamp(strVal);
-        }
-        // 字符串类型
-        return val instanceof String ? ((String) val).trim() : val.toString().trim();
-    }
-
-    private static java.sql.Date parseDate(String val) {
-        String[] patterns = {"yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd", "yyyy-MM", "yyyyMM"};
-        for (String pattern : patterns) {
-            try {
-                java.util.Date d = new java.text.SimpleDateFormat(pattern).parse(val);
-                return new java.sql.Date(d.getTime());
-            } catch (Exception ignored) { }
-        }
-        throw new IllegalArgumentException("日期转换失败: 值='" + val + "', 支持的格式: yyyy-MM-dd, yyyy/MM/dd, yyyyMMdd");
-    }
-
-    private static java.sql.Timestamp parseTimestamp(String val) {
-        String[] patterns = {"yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss",
-                "yyyy-MM-dd'T'HH:mm:ss", "yyyyMMddHHmmss",
-                "yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd"};
-        for (String pattern : patterns) {
-            try {
-                java.util.Date d = new java.text.SimpleDateFormat(pattern).parse(val);
-                return new java.sql.Timestamp(d.getTime());
-            } catch (Exception ignored) { }
-        }
-        throw new IllegalArgumentException("时间戳转换失败: 值='" + val + "', 支持的格式: yyyy-MM-dd HH:mm:ss, yyyyMMddHHmmss");
+        return SqlUtils.convertValue(val, targetType);
     }
 
     // ====== 结果封装 ======
