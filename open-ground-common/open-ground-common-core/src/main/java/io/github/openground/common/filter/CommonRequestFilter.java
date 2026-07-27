@@ -66,10 +66,14 @@ public class CommonRequestFilter implements Filter {
 
     protected List<String> whiteList = new ArrayList<>();
 
-    /** 部署模式（由 Environment 注入，可选） */
+    /**
+     * 部署模式（由 Environment 注入，可选）
+     */
     private String mode;
 
-    /** Ant 路径匹配器（用于白名单 URL 匹配） */
+    /**
+     * Ant 路径匹配器（用于白名单 URL 匹配）
+     */
     private final PathMatcher pathMatcher = new AntPathMatcher();
 
     /**
@@ -275,6 +279,10 @@ public class CommonRequestFilter implements Filter {
             // GET/DELETE 从 header 获取加密数据
             requestStr = request.getHeader("EncryptData");
         }
+        // 去除首尾多余的双引号（兼容客户端将请求体作为 JSON 字符串字面量发送的情况）
+        if (requestStr != null && requestStr.startsWith("\"") && requestStr.endsWith("\"") && requestStr.length() >= 2) {
+            requestStr = requestStr.substring(1, requestStr.length() - 1);
+        }
         return requestStr;
     }
 
@@ -284,7 +292,7 @@ public class CommonRequestFilter implements Filter {
      * @return 解密后的请求体字符串，解密/验签失败返回 null
      */
     private String handleDecryptAndSign(String requestStr, BodyReaderHttpServletRequestWrapper requestWrapper,
-                                         HttpServletRequest request, HttpServletResponse response) throws IOException {
+                                        HttpServletRequest request, HttpServletResponse response) throws IOException {
         log.debug("start request decrypt, use {} to decrypt", properties.getAlgorithm());
 
         try {
@@ -323,13 +331,12 @@ public class CommonRequestFilter implements Filter {
     private String decryptRequest(String requestStr, BodyReaderHttpServletRequestWrapper requestWrapper) {
         try {
             String algorithm = properties.getAlgorithm().toUpperCase();
-            if (AES.equals(algorithm)) {
+            if (AES.equalsIgnoreCase(algorithm)) {
                 requestStr = AESUtil.decrypt(properties.getEncryptKey(), properties.getEncryptIv(), requestStr);
-            } else if (SM4.equals(algorithm)) {
+            } else if (SM4.equalsIgnoreCase(algorithm)) {
                 requestStr = SM4Utils.decrypt(properties.getEncryptKey(), properties.getEncryptIv(), requestStr);
             } else {
-                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "not support algorithm: " + algorithm);
+                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "not support algorithm: " + algorithm);
             }
         } catch (Exception e) {
             log.error("请求报文解密失败:", e);
@@ -337,7 +344,11 @@ public class CommonRequestFilter implements Filter {
         }
         log.debug("after decryption request str is: {}", requestStr);
         // 将解密后的内容重新放入请求体
-        requestWrapper.setBody(requestStr.getBytes(StandardCharsets.UTF_8));
+        if (requestStr != null) {
+            requestWrapper.setBody(requestStr.getBytes(StandardCharsets.UTF_8));
+        } else {
+            log.warn("requestStr is null, decryptRequest fail");
+        }
         return requestStr;
     }
 

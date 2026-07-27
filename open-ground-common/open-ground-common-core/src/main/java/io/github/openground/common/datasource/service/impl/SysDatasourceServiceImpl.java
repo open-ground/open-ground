@@ -101,7 +101,7 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
 
 
     @Override
-    public List<SysDatasourceDO> listAll(SysDatasourceDO query) {
+    public List<SysDatasourceDO> listAllNoPasswd(SysDatasourceDO query) {
         List<SysDatasourceDO> list = datasourceMapper.selectList(query);
         for (SysDatasourceDO ds : list) {
             ds.setPassword(null);
@@ -237,7 +237,7 @@ public class SysDatasourceServiceImpl implements SysDatasourceService {
     }
 
     @Override
-    public List<SysDatasourceDO> listAll() {
+    public List<SysDatasourceDO> listAllForProvider() {
         return datasourceMapper.selectList(new SysDatasourceDO());
     }
 

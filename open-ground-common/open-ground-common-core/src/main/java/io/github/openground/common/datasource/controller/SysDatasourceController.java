@@ -81,7 +81,13 @@ public class SysDatasourceController {
     @Operation(summary = "查询数据源列表")
     @PostMapping("/listAll")
     public CommonResult<List<SysDatasourceDO>> listAll(@RequestBody SysDatasourceDO query) {
-        return CommonResult.success(datasourceService.listAll(query));
+        return CommonResult.success(datasourceService.listAllNoPasswd(query));
+    }
+
+    @Operation(summary = "Provider查询数据源列表")
+    @PostMapping("/listAllForProvider")
+    public CommonResult<List<SysDatasourceDO>> listAllDatasourceProvider() {
+        return CommonResult.success(datasourceService.listAllForProvider());
     }
 
     @Operation(summary = "测试数据源连接")

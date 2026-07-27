@@ -37,7 +37,7 @@ public class DbCheckSysDatasourceProvider implements DbCheckDatasourceProvider {
         }
 
         try {
-            List<SysDatasourceDO> list = sysDatasourceService.listAll();
+            List<SysDatasourceDO> list = sysDatasourceService.listAllForProvider();
             if (list == null || list.isEmpty()) {
                 return Collections.emptyList();
             }

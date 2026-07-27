@@ -41,7 +41,7 @@ public class SysDatasourceProvider implements DataSourceProvider {
             return Collections.emptyList();
         }
         try {
-            List<SysDatasourceDO> list = sysDatasourceService.listAll();
+            List<SysDatasourceDO> list = sysDatasourceService.listAllForProvider();
             if (list == null || list.isEmpty()) {
                 return Collections.emptyList();
             }

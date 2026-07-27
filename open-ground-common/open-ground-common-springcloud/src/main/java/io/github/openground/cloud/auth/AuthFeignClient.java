@@ -53,6 +53,6 @@ public interface AuthFeignClient {
      * @param sysDatasourceDO
      * @return
      */
-    @PostMapping("/sys/datasource/listAll")
+    @PostMapping("/sys/datasource/listAllForProvider")
     CommonResult<List<SysDatasourceDO>> listAllDatasource(@RequestBody SysDatasourceDO sysDatasourceDO);
 }

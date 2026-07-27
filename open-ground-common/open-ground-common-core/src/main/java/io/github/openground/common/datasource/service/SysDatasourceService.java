@@ -42,7 +42,7 @@ public interface SysDatasourceService {
     /**
      * 查询数所有据源列表
      */
-    List<SysDatasourceDO> listAll(SysDatasourceDO query);
+    List<SysDatasourceDO> listAllNoPasswd(SysDatasourceDO query);
 
     /**
      * 测试数据源连接
@@ -80,5 +80,5 @@ public interface SysDatasourceService {
     /**
      * 获取所有有效数据源（供 SysDatasourceProvider 使用）
      */
-    List<SysDatasourceDO> listAll();
+    List<SysDatasourceDO> listAllForProvider();
 }
