@@ -57,18 +57,20 @@ public class DynamicDataSourceManager {
     /**
      * 获取默认数据源
      *
-     * <p>优先返回 dblist/sys_datasource 中的第一个数据源，
-     * 若无动态数据源则返回 Spring Boot 自动装配的主数据源。
+     * <p>优先返回 Spring Boot 自动装配的主数据源（{@code spring.datasource.*} 配置），
+     * 无主数据源时返回 dblist/sys_datasource 中的第一个动态数据源。
      *
      * @return 数据源
      */
     public DataSource getDefaultDataSource() {
+        // 优先返回 Spring Boot 主数据源
+        if (primaryDataSource != null) {
+            return primaryDataSource;
+        }
+        // 兜底：返回第一个动态数据源
         String defaultDsName = registry.getDefaultDsName();
         if (defaultDsName != null) {
             return getDataSource(defaultDsName);
-        }
-        if (primaryDataSource != null) {
-            return primaryDataSource;
         }
         throw new IllegalStateException("无可用数据源：未配置 ground.dblist/sys_datasource，且 Spring 主数据源不存在");
     }
@@ -79,13 +81,14 @@ public class DynamicDataSourceManager {
      * @return 数据库类型字符串
      */
     public String getDbType() {
+        // 优先从主数据源推断
+        if (primaryDataSource != null) {
+            return inferDbTypeFromDataSource(primaryDataSource);
+        }
+        // 兜底：从第一个动态数据源推断
         String defaultDsName = registry.getDefaultDsName();
         if (defaultDsName != null) {
             return getDbType(defaultDsName);
-        }
-        // 从主数据源推断
-        if (primaryDataSource != null) {
-            return inferDbTypeFromDataSource(primaryDataSource);
         }
         return DbTypeDetector.MYSQL;
     }
@@ -131,6 +134,11 @@ public class DynamicDataSourceManager {
      * @return 数据库类型字符串，无数据源则默认 mysql
      */
     public String getDefaultDbType() {
+        // 优先从主数据源推断
+        if (primaryDataSource != null) {
+            return inferDbTypeFromDataSource(primaryDataSource);
+        }
+        // 兜底：从第一个动态数据源推断
         String dsName = getDefaultDsName();
         if (dsName != null) {
             return getDbType(dsName);

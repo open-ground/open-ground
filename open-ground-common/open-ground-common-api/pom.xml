@@ -28,5 +28,9 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.github.open-ground</groupId>
+            <artifactId>open-ground-base</artifactId>
+        </dependency>
     </dependencies>
 </project>

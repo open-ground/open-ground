@@ -1,4 +1,5 @@
 io.github.openground.common.log.config.RequestLogAutoConfiguration
+io.github.openground.common.auth.config.LocalAuthCommonProviderAutoConfiguration
 io.github.openground.common.dbcheck.config.DbCheckCoreAutoConfiguration
 io.github.openground.common.dbcheck.config.DbCheckAutoConfiguration
 io.github.openground.common.datasource.config.DatasourceCoreAutoConfiguration

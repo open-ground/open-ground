@@ -7,6 +7,7 @@ import io.github.openground.common.log.domain.SysOptLog;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -55,4 +56,52 @@ public interface AuthFeignClient {
      */
     @PostMapping("/sys/datasource/listAllForProvider")
     CommonResult<List<SysDatasourceDO>> listAllDatasource(@RequestBody SysDatasourceDO sysDatasourceDO);
+
+    // ==================== AuthCommonProvider 方法 ====================
+
+    /**
+     * 获取用户功能权限
+     *
+     * @param userName 用户名
+     * @return 功能权限 Map
+     */
+    @PostMapping("/comm/api/userFuncs")
+    CommonResult<?> getuserFuncs(@RequestBody String userName);
+
+    /**
+     * 根据用户名获取用户信息
+     *
+     * @param userName 用户名
+     * @return 用户信息
+     */
+    @PostMapping("/user/getUserInfoByUserName")
+    CommonResult<?> getUserInfoByUserName(@RequestBody String userName);
+
+    /**
+     * 批量获取用户信息
+     *
+     * @param userNameList 用户名列表
+     * @return 用户列表
+     */
+    @PostMapping("/user/getUserListByUserNames")
+    CommonResult<?> getUsersByUserNames(@RequestParam("userNameList") List<String> userNameList);
+
+    /**
+     * 获取字典信息
+     *
+     * @param dictType 字典类型
+     * @param appName  应用名称
+     * @return 字典列表
+     */
+    @PostMapping("/comm/api/getDictByType")
+    CommonResult<?> getDictByType(@RequestParam("dictType") String dictType,
+                                  @RequestParam(value = "appName", required = false) String appName);
+
+    /**
+     * 获取所有机构信息
+     *
+     * @return 机构列表
+     */
+    @PostMapping("/comm/api/listAllOrg")
+    CommonResult<?> listAllOrg();
 }
