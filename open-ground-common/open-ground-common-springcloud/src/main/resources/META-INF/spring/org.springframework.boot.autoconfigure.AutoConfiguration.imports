@@ -5,3 +5,4 @@ io.github.openground.cloud.keygen.config.FeignKeyGenAutoConfiguration
 io.github.openground.cloud.log.config.FeignLogAutoConfiguration
 io.github.openground.cloud.loadbalance.LocalFirstLoadBalancerNacosAutoConfiguration
 io.github.openground.cloud.datasource.FeignDatasourceAutoConfiguration
+io.github.openground.cloud.interceptor.config.FeignHeaderInterceptorAutoConfiguration
