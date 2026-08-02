@@ -85,7 +85,7 @@ public class OssAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "local", matchIfMissing = true)
-    public LocalFileController localFileController(LocalOssProperties localOssProperties) {
-        return new LocalFileController(localOssProperties);
+    public LocalFileController localFileController(OssClient localOssClient) {
+        return new LocalFileController(localOssClient);
     }
 }
