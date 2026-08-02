@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -20,29 +21,34 @@ import java.util.stream.Stream;
 /**
  * OSS 自动配置
  * <p>
- * 通过 {@code ground.oss.enable=true} 启用。
- * 参考文档：
- * <a href="https://docs.aws.amazon.com/zh_cn/sdk-for-java/v1/developer-guide/credentials.html">Credentials</a>
- * <a href="https://docs.aws.amazon.com/zh_cn/sdk-for-java/v1/developer-guide/java-dg-region-selection.html">Region</a>
+ * 支持两种模式：
+ * <ul>
+ *   <li><b>本地模式</b>（默认）：不配置或 {@code ground.oss.type=local}，使用本地磁盘存储</li>
+ *   <li><b>S3 模式</b>：需要 {@code ground.oss.type=s3} 且 {@code ground.oss.enable=true}，使用 AWS S3 协议</li>
+ * </ul>
  * </p>
  *
  * @author open-ground
  */
 @Slf4j
 @AutoConfiguration
-@EnableConfigurationProperties(OssProperties.class)
+@EnableConfigurationProperties({OssProperties.class, LocalOssProperties.class})
 public class OssAutoConfiguration {
+
+    // ==================== S3 模式 ====================
 
     @Bean
     @ConditionalOnMissingBean(AmazonS3.class)
+    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "s3")
     @ConditionalOnProperty(prefix = "ground.oss", name = "enable", havingValue = "true")
-    public OssClient ossClient(AmazonS3 amazonS3) {
+    public OssClient s3OssClient(AmazonS3 amazonS3) {
         log.info("初始化 OssClient（S3协议）");
         return new S3OssClient(amazonS3);
     }
 
     @Bean
     @ConditionalOnMissingBean(AmazonS3.class)
+    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "s3")
     @ConditionalOnProperty(prefix = "ground.oss", name = "enable", havingValue = "true")
     public AmazonS3 amazonS3(OssProperties ossProperties) {
         long nullSize = Stream.<String>builder()
@@ -65,5 +71,21 @@ public class OssAutoConfiguration {
                 .disableChunkedEncoding()
                 .withPathStyleAccessEnabled(ossProperties.isPathStyleAccess())
                 .build();
+    }
+
+    // ==================== 本地文件模式（默认）====================
+
+    @Bean
+    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "local", matchIfMissing = true)
+    public OssClient localOssClient(LocalOssProperties localOssProperties) {
+        log.info("初始化 OssClient（本地文件模式）");
+        RestTemplate restTemplate = new RestTemplate();
+        return new LocalOssClient(localOssProperties, restTemplate);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "local", matchIfMissing = true)
+    public LocalFileController localFileController(LocalOssProperties localOssProperties) {
+        return new LocalFileController(localOssProperties);
     }
 }
