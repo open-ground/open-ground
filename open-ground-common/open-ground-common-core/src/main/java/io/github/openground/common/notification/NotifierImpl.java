@@ -6,7 +6,7 @@ import io.github.openground.common.notification.domain.NotifyRequest;
 import io.github.openground.common.notification.domain.NotifyResponse;
 import io.github.openground.common.notification.spi.NotifyChannel;
 import io.github.openground.common.notification.spi.NotifyTemplateRenderer;
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 

@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -526,8 +526,14 @@ public class DbCheckController {
 
         Resource resource = script.getResource();
         String fileName = buildDownloadFileName(script);
-        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-                .replace("+", "%20");
+        String encodedFileName;
+        try {
+            encodedFileName = URLEncoder.encode(fileName, "UTF-8")
+                    .replace("+", "%20");
+        } catch (UnsupportedEncodingException e) {
+            // UTF-8 必然受支持，理论不可达
+            throw new IllegalStateException("UTF-8 编码不受支持", e);
+        }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)

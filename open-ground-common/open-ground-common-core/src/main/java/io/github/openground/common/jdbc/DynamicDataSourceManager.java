@@ -3,7 +3,7 @@ package io.github.openground.common.jdbc;
 import com.alibaba.druid.pool.DruidDataSource;
 import io.github.openground.common.jdbc.config.DruidProperties;
 import io.github.openground.common.jdbc.config.DynamicDataSourceProperties;
-import jakarta.annotation.PreDestroy;
+import javax.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
@@ -252,7 +252,8 @@ public class DynamicDataSourceManager {
         Integer overrideMinIdle = null;
         Long overrideMaxWait = null;
         Object raw = desc.getRawEntity();
-        if (raw instanceof DynamicDataSourceProperties.DataSourceEntry entry) {
+        if (raw instanceof DynamicDataSourceProperties.DataSourceEntry) {
+            DynamicDataSourceProperties.DataSourceEntry entry = (DynamicDataSourceProperties.DataSourceEntry) raw;
             overrideInitialSize = entry.getInitialSize() != 5 ? entry.getInitialSize() : null;
             overrideMaxActive = entry.getMaxActive() != 20 ? entry.getMaxActive() : null;
             overrideMinIdle = entry.getMinIdle() != 5 ? entry.getMinIdle() : null;
@@ -293,7 +294,8 @@ public class DynamicDataSourceManager {
      * 从 DataSource 推断数据库类型（用于主数据源）
      */
     private String inferDbTypeFromDataSource(DataSource ds) {
-        if (ds instanceof DruidDataSource dds) {
+        if (ds instanceof DruidDataSource) {
+            DruidDataSource dds = (DruidDataSource) ds;
             String url = dds.getUrl();
             if (url != null) {
                 return DbTypeDetector.detectByUrl(url);

@@ -1,7 +1,7 @@
 package io.github.openground.common.excel;
 
 import io.github.openground.common.excel.model.ImportResult;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.OutputStream;

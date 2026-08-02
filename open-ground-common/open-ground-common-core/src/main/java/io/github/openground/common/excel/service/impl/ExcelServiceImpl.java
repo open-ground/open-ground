@@ -14,9 +14,10 @@ import io.github.openground.common.excel.model.ImportResult;
 import io.github.openground.common.excel.model.ImportRowError;
 import io.github.openground.common.excel.resolver.ExcelAnnotationResolver;
 import io.github.openground.common.excel.resolver.FieldMeta;
+import io.github.openground.common.excel.enums.QueryType;
 import io.github.openground.common.excel.spi.DictTranslator;
 import io.github.openground.common.excel.spi.ExcelQueryProvider;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,11 +45,22 @@ public class ExcelServiceImpl implements ExcelService {
     private final DictTranslator dictTranslator;
     private final List<ExcelQueryProvider> queryProviders;
 
+    /**
+     * URL 编码文件名（JDK 8 的 {@link URLEncoder#encode(String, String)} 声明抛出 UnsupportedEncodingException）
+     */
+    private String encodeFileName(String raw) {
+        try {
+            return URLEncoder.encode(raw, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            // UTF-8 必然受支持，理论不可达
+            throw new IllegalStateException("UTF-8 编码不受支持", e);
+        }
+    }
+
     @Override
     public void export(Class<?> voClass, Map<String, Object> params, HttpServletResponse response) {
         ExcelTemplate template = annotationResolver.getTemplate(voClass);
-        String fileName = URLEncoder.encode(
-                template.sheetName() + "_" + System.currentTimeMillis(), StandardCharsets.UTF_8);
+        String fileName = encodeFileName(template.sheetName() + "_" + System.currentTimeMillis());
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition",
                 "attachment;filename=" + fileName + ".xlsx");
@@ -148,8 +160,7 @@ public class ExcelServiceImpl implements ExcelService {
         List<FieldMeta> fields = annotationResolver.getImportFields(voClass);
         ExcelTemplate template = annotationResolver.getTemplate(voClass);
 
-        String fileName = URLEncoder.encode(
-                template.sheetName() + "_template", StandardCharsets.UTF_8);
+        String fileName = encodeFileName(template.sheetName() + "_template");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition",
                 "attachment;filename=" + fileName + ".xlsx");
@@ -204,8 +215,7 @@ public class ExcelServiceImpl implements ExcelService {
         List<FieldMeta> fields = annotationResolver.getImportFields(voClass);
         ExcelTemplate template = annotationResolver.getTemplate(voClass);
 
-        String fileName = URLEncoder.encode(
-                template.sheetName() + "_import_errors", StandardCharsets.UTF_8);
+        String fileName = encodeFileName(template.sheetName() + "_import_errors");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition",
                 "attachment;filename=" + fileName + ".xlsx");
@@ -245,11 +255,17 @@ public class ExcelServiceImpl implements ExcelService {
     private List<?> queryExportData(Class<?> voClass, Map<String, Object> params) {
         ExcelTemplate template = annotationResolver.getTemplate(voClass);
 
-        return switch (template.queryType()) {
-            case TABLE -> queryFromTable(voClass, template.tableName(), params);
-            case SQL -> queryFromSql(template.tableName(), params);
-            case CUSTOM -> queryFromProvider(template.queryProvider(), params);
-        };
+        QueryType queryType = template.queryType();
+        switch (queryType) {
+            case TABLE:
+                return queryFromTable(voClass, template.tableName(), params);
+            case SQL:
+                return queryFromSql(template.tableName(), params);
+            case CUSTOM:
+                return queryFromProvider(template.queryProvider(), params);
+            default:
+                throw new IllegalArgumentException("不支持的 Excel 查询类型: " + queryType);
+        }
     }
 
     @SuppressWarnings("unchecked")

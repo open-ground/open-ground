@@ -92,7 +92,7 @@ public class DbCheckSysDatasourceProvider implements DbCheckDatasourceProvider {
              Statement stmt = conn.createStatement()) {
             conn.setAutoCommit(false);
             for (String sql : sqls) {
-                if (sql == null || sql.isBlank()) continue;
+                if (sql == null || sql.trim().isEmpty()) continue;
                 validateDdlSafety(sql);
                 log.info("系统数据源执行SQL: {}", sql.substring(0, Math.min(sql.length(), 200)));
                 stmt.execute(sql);

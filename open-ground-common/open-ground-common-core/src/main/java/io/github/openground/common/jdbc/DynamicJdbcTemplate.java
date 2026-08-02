@@ -214,9 +214,11 @@ public class DynamicJdbcTemplate {
                     Map<String, Object> item = new HashMap<>();
                     for (String name : columnNames) {
                         Object value = rs.getObject(name);
-                        if (value instanceof NClob nclob) {
+                        if (value instanceof NClob) {
+                            NClob nclob = (NClob) value;
                             value = nclob.getSubString(1, (int) nclob.length());
-                        } else if (value instanceof Clob clob) {
+                        } else if (value instanceof Clob) {
+                            Clob clob = (Clob) value;
                             value = clob.getSubString(1, (int) clob.length());
                         }
                         if ("count(0)".equalsIgnoreCase(name)) {

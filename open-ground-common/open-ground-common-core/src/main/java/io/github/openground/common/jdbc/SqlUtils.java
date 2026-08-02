@@ -3,7 +3,10 @@ package io.github.openground.common.jdbc;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -28,42 +31,42 @@ public final class SqlUtils {
     // ==================== 数据库类型分组（跨数据库兼容） ====================
 
     /** 整数类型 */
-    private static final Set<String> INTEGER_TYPES = Set.of(
+    private static final Set<String> INTEGER_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             // Standard SQL & MySQL
             "int", "integer", "bigint", "smallint", "tinyint", "mediumint", "year",
             // PostgreSQL / GaussDB
             "int2", "int4", "int8", "serial", "bigserial", "smallserial"
-    );
+    )));
 
     /** 浮点类型 */
-    private static final Set<String> FLOAT_TYPES = Set.of(
+    private static final Set<String> FLOAT_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             // Standard SQL & MySQL
             "float", "double", "real", "double precision",
             // PostgreSQL / GaussDB
             "float4", "float8",
             // Oracle / DM
             "binary_float", "binary_double"
-    );
+    )));
 
     /** 高精度十进制类型 */
-    private static final Set<String> DECIMAL_TYPES = Set.of(
+    private static final Set<String> DECIMAL_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "decimal", "numeric", "money"
-    );
+    )));
 
     /** 布尔类型 */
-    private static final Set<String> BOOLEAN_TYPES = Set.of(
+    private static final Set<String> BOOLEAN_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "boolean", "bool"
-    );
+    )));
 
     /** 时间戳类型 */
-    private static final Set<String> TIMESTAMP_TYPES = Set.of(
+    private static final Set<String> TIMESTAMP_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "timestamp", "timestamptz", "datetime", "smalldatetime", "datetime2"
-    );
+    )));
 
     /** 时间类型 */
-    private static final Set<String> TIME_TYPES = Set.of(
+    private static final Set<String> TIME_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             "time", "timetz"
-    );
+    )));
 
     private SqlUtils() {
     }

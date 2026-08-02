@@ -3,7 +3,7 @@ package io.github.openground.cloud.interceptor;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import io.github.openground.base.utils.RequestUtil;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j

@@ -8,7 +8,7 @@ import io.github.openground.land.api.dto.TaskSegmentRequest;
 import io.github.openground.land.api.executor.RemoteTaskExecutor;
 import io.github.openground.land.common.constants.ErrorCode;
 import io.github.openground.land.dispatch.discovery.DbServiceDiscovery;
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;

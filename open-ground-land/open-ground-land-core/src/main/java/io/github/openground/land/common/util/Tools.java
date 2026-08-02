@@ -3,7 +3,7 @@ package io.github.openground.land.common.util;
 import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSONObject;
 import io.github.openground.land.common.exception.SystemException;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetAddress;

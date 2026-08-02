@@ -1,6 +1,6 @@
 package io.github.openground.base.utils;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * IP 工具类：获取客户端真实 IP、判断内网 IP 等

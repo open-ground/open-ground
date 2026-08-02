@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 数据查询与导出服务
@@ -252,7 +253,7 @@ public class DataQueryService {
             List<String> columns = new ArrayList<>(rows.get(0).keySet());
 
             // 写表头
-            writer.println(String.join(",", columns.stream().map(this::csvEscape).toList()));
+            writer.println(String.join(",", columns.stream().map(this::csvEscape).collect(Collectors.toList())));
 
             // 分批写入数据
             int totalWritten = 0;

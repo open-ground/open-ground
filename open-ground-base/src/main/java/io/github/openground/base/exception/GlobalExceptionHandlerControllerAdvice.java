@@ -3,8 +3,6 @@ package io.github.openground.base.exception;
 import io.github.openground.base.constant.ErrorCode;
 import io.github.openground.base.constant.ErrorCodeMapper;
 import io.github.openground.base.dto.CommonResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -14,8 +12,10 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
@@ -124,9 +124,9 @@ public class GlobalExceptionHandlerControllerAdvice {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<CommonResult> handleException(HttpServletRequest request, HttpServletResponse response, Exception e) {
-        // SSE 客户端断开导致的 AsyncRequestNotUsableException 是预期行为，降级为 DEBUG 日志
+        // SSE 客户端断开（Boot 2.x 下表现为 ClientAbortException / IOException）是预期行为，降级为 DEBUG 日志
         if (("/log/tail".equalsIgnoreCase(request.getServletPath())) ||
-                e instanceof AsyncRequestNotUsableException && response.getContentType() != null && response.getContentType().contains(MediaType.TEXT_EVENT_STREAM_VALUE)) {
+                (e instanceof IOException && response.getContentType() != null && response.getContentType().contains(MediaType.TEXT_EVENT_STREAM_VALUE))) {
             log.warn("[URI: {}] SSE 客户端断开: {}", request.getRequestURI(), e.getMessage());
             return null;
         }

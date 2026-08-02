@@ -5,7 +5,7 @@ import io.github.openground.base.dto.CommonResult;
 import io.github.openground.common.dataquery.service.DataQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -135,7 +134,7 @@ public class DataQueryController {
             log.info("Excel 导出审计 | 数据源={} | SQL={}", dsName, sql);
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("UTF-8");
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+            String encodedFileName = URLEncoder.encode(fileName, "UTF-8").replace("+", "%20");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
             dataQueryService.exportExcel(dsName, sql, response.getOutputStream());
         } catch (IllegalArgumentException e) {
@@ -163,7 +162,7 @@ public class DataQueryController {
             log.info("CSV 导出审计 | 数据源={} | SQL={}", dsName, sql);
             response.setContentType("text/csv");
             response.setCharacterEncoding("UTF-8");
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+            String encodedFileName = URLEncoder.encode(fileName, "UTF-8").replace("+", "%20");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
             dataQueryService.exportCsv(dsName, sql, response.getOutputStream());
         } catch (IllegalArgumentException e) {

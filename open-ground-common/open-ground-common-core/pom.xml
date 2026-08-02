@@ -49,7 +49,7 @@
         <!-- SpringDoc OpenAPI（@Operation, @Tag） -->
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <artifactId>springdoc-openapi-ui</artifactId>
         </dependency>
 
         <!-- Fastjson（参数序列化） -->
@@ -60,8 +60,8 @@
 
         <!-- Jakarta Servlet API（HttpServletRequest） -->
         <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
             <optional>true</optional>
         </dependency>
 
@@ -80,7 +80,7 @@
         <!-- Druid 连接池 -->
         <dependency>
             <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-3-starter</artifactId>
+            <artifactId>druid-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Hutool（Snowflake 工具依赖） -->
@@ -132,7 +132,7 @@
         <!-- MyBatis-Plus（包含 mybatis-spring-boot-starter + mybatis-annotation） -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
         </dependency>
 
         <!-- EasyExcel -->

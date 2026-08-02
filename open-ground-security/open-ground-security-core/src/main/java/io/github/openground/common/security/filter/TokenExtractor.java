@@ -1,6 +1,6 @@
 package io.github.openground.common.security.filter;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * Token 提取器 SPI 接口

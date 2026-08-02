@@ -1,6 +1,6 @@
 package io.github.openground.land.common.util;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.ibatis.type.Alias;
 
 import java.util.Collection;

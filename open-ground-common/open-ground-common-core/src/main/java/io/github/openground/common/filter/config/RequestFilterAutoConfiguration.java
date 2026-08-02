@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * CommonRequestFilter 自动配置（Auth 模式）
@@ -50,7 +51,7 @@ public class RequestFilterAutoConfiguration {
         CommonRequestFilter filter = new CommonRequestFilter(properties);
         filter.setEnvironment(environment);
         tokenCheckServiceProvider.ifAvailable(filter::setTokenCheckService);
-        List<RequestFilterWhiteListProvider> providers = whiteListProviderProvider.stream().toList();
+        List<RequestFilterWhiteListProvider> providers = whiteListProviderProvider.stream().collect(Collectors.toList());
         if (!providers.isEmpty()) {
             filter.setWhiteListProviders(providers);
         }

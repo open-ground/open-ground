@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +38,17 @@ class AuthCommonProviderTest {
 
     @Autowired
     private NamedParameterJdbcTemplate primaryJdbcTemplate;
+
+    /**
+     * JDK 8 兼容的 Map.of 替代：键值交替传入，键必须为 String
+     */
+    private static Map<String, Object> mapOf(Object... kvs) {
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 0; i < kvs.length; i += 2) {
+            map.put((String) kvs[i], kvs[i + 1]);
+        }
+        return map;
+    }
 
     @Nested
     @DisplayName("LocalAuthCommonProvider — 直连数据库")
@@ -92,7 +105,7 @@ class AuthCommonProviderTest {
         @DisplayName("getUsersByUserNames: 应按 user_name 批量查询用户")
         void shouldGetUsersByUserNames() {
             AuthCommonProvider provider = new LocalAuthCommonProvider(dynamicJdbcTemplate, primaryJdbcTemplate);
-            CommonResult<?> result = provider.getUsersByUserNames(List.of("zhangqsg"));
+            CommonResult<?> result = provider.getUsersByUserNames(Collections.singletonList("zhangqsg"));
             assertEquals("0000", result.getCode());
             assertNotNull(result.getData());
             assertInstanceOf(List.class, result.getData());
@@ -102,7 +115,7 @@ class AuthCommonProviderTest {
         @DisplayName("getUsersByUserNames: 空列表应返回空 List")
         void shouldGetUsersByUserNamesWhenEmpty() {
             AuthCommonProvider provider = new LocalAuthCommonProvider(dynamicJdbcTemplate, primaryJdbcTemplate);
-            CommonResult<?> result = provider.getUsersByUserNames(List.of());
+            CommonResult<?> result = provider.getUsersByUserNames(Collections.emptyList());
             assertEquals("0000", result.getCode());
             assertNotNull(result.getData());
             assertInstanceOf(List.class, result.getData());
@@ -139,7 +152,7 @@ class AuthCommonProviderTest {
         @DisplayName("getuserFuncs: 应委托 FeignClient 调用")
         void shouldDelegateGetUserFuncs() {
             AuthFeignClient feignClient = mock(AuthFeignClient.class);
-            CommonResult<?> mockResult = CommonResult.success(Map.of("FUN001", "权限A"));
+            CommonResult<?> mockResult = CommonResult.success(mapOf("FUN001", "权限A"));
             doReturn(mockResult).when(feignClient).getuserFuncs("zhangqsg");
 
             AuthCommonProvider provider = new FeignAuthCommonProvider(feignClient);
@@ -155,7 +168,7 @@ class AuthCommonProviderTest {
         @DisplayName("getUserInfoByUserName: 应委托 FeignClient 调用")
         void shouldDelegateGetUserInfoByUserName() {
             AuthFeignClient feignClient = mock(AuthFeignClient.class);
-            CommonResult<?> mockResult = CommonResult.success(Map.of("userId", 1L, "userName", "zhangqsg"));
+            CommonResult<?> mockResult = CommonResult.success(mapOf("userId", 1L, "userName", "zhangqsg"));
             doReturn(mockResult).when(feignClient).getUserInfoByUserName("zhangqsg");
 
             AuthCommonProvider provider = new FeignAuthCommonProvider(feignClient);
@@ -171,15 +184,15 @@ class AuthCommonProviderTest {
         @DisplayName("getUsersByUserNames: 应委托 FeignClient 调用")
         void shouldDelegateGetUsersByUserNames() {
             AuthFeignClient feignClient = mock(AuthFeignClient.class);
-            CommonResult<?> mockResult = CommonResult.success(List.of(Map.of("userId", 1L, "userName", "zhangqsg")));
-            doReturn(mockResult).when(feignClient).getUsersByUserNames(List.of("zhangqsg"));
+            CommonResult<?> mockResult = CommonResult.success(Collections.singletonList(mapOf("userId", 1L, "userName", "zhangqsg")));
+            doReturn(mockResult).when(feignClient).getUsersByUserNames(Collections.singletonList("zhangqsg"));
 
             AuthCommonProvider provider = new FeignAuthCommonProvider(feignClient);
-            CommonResult<?> result = provider.getUsersByUserNames(List.of("zhangqsg"));
+            CommonResult<?> result = provider.getUsersByUserNames(Collections.singletonList("zhangqsg"));
 
             assertEquals("0000", result.getCode());
             assertNotNull(result.getData());
-            verify(feignClient).getUsersByUserNames(List.of("zhangqsg"));
+            verify(feignClient).getUsersByUserNames(Collections.singletonList("zhangqsg"));
         }
 
         @Test
@@ -187,7 +200,7 @@ class AuthCommonProviderTest {
         @DisplayName("getDictByType: 应委托 FeignClient 调用")
         void shouldDelegateGetDictByType() {
             AuthFeignClient feignClient = mock(AuthFeignClient.class);
-            CommonResult<?> mockResult = CommonResult.success(List.of(Map.of("dictName", "是", "dictValue", "Y")));
+            CommonResult<?> mockResult = CommonResult.success(Collections.singletonList(mapOf("dictName", "是", "dictValue", "Y")));
             doReturn(mockResult).when(feignClient).getDictByType("YOrN", "all");
 
             AuthCommonProvider provider = new FeignAuthCommonProvider(feignClient);
@@ -203,7 +216,7 @@ class AuthCommonProviderTest {
         @DisplayName("listAllOrg: 应委托 FeignClient 调用")
         void shouldDelegateListAllOrg() {
             AuthFeignClient feignClient = mock(AuthFeignClient.class);
-            CommonResult<?> mockResult = CommonResult.success(List.of(Map.of("orgId", "1001", "orgName", "测试机构")));
+            CommonResult<?> mockResult = CommonResult.success(Collections.singletonList(mapOf("orgId", "1001", "orgName", "测试机构")));
             doReturn(mockResult).when(feignClient).listAllOrg();
 
             AuthCommonProvider provider = new FeignAuthCommonProvider(feignClient);

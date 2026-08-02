@@ -54,7 +54,7 @@ public class ExcelEntityScanner implements ApplicationListener<ApplicationReadyE
         try {
             Object mainApp = event.getSpringApplication().getMainApplicationClass();
             if (mainApp instanceof Class) {
-                String mainPackage = ((Class<?>) mainApp).getPackageName();
+                String mainPackage = ((Class<?>) mainApp).getPackage().getName();
                 scanPackage(mainPackage);
             }
         } catch (Exception e) {

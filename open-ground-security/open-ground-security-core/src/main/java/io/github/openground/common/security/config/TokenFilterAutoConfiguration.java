@@ -17,6 +17,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Token 鉴权过滤器自动配置
@@ -63,7 +64,7 @@ public class TokenFilterAutoConfiguration {
         AuthTokenManagerFilter filter = new AuthTokenManagerFilter(tokenManager, tokenExtractor);
         filter.setWhiteList(properties.getWhiteList());
         filter.setEnabled(properties.isEnabled());
-        List<TokenFilterWhiteListProvider> providers = whiteListProviderProvider.stream().toList();
+        List<TokenFilterWhiteListProvider> providers = whiteListProviderProvider.stream().collect(Collectors.toList());
         if (!providers.isEmpty()) {
             filter.setWhiteListProviders(providers);
         }

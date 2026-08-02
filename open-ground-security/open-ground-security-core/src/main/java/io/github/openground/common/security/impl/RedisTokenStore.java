@@ -3,7 +3,7 @@ package io.github.openground.common.security.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.openground.common.security.SessionEntity;
 import io.github.openground.common.security.TokenStore;
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -5,6 +5,7 @@ import io.github.openground.common.keygen.KeyGenerator;
 import io.github.openground.common.log.annotation.OptLog;
 import io.github.openground.common.log.enums.OptType;
 import io.github.openground.common.security.TokenManager;
+import io.github.openground.common.security.spi.UserDetails;
 import io.github.openground.common.security.spi.UserDetailsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +59,7 @@ public class TestController {
      */
     @GetMapping("/me")
     public CommonResult<Map<String, Object>> me() {
-        var user = tokenManager.getCurrentUser();
+        UserDetails user = tokenManager.getCurrentUser();
         Map<String, Object> result = new HashMap<>();
         if (user != null) {
             result.put("username", user.getUsername());

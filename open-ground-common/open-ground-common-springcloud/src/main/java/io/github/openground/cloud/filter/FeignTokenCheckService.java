@@ -3,7 +3,7 @@ package io.github.openground.cloud.filter;
 import io.github.openground.base.dto.CommonResult;
 import io.github.openground.cloud.auth.AuthFeignClient;
 import io.github.openground.common.filter.TokenCheckService;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

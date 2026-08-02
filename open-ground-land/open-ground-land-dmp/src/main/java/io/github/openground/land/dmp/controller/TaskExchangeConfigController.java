@@ -18,7 +18,7 @@ import io.github.openground.land.dmp.mapper.TaskDataExchangeLogMapper;
 import io.github.openground.land.dmp.service.TaskDataExchangeConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
+import javax.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -196,7 +196,7 @@ public class TaskExchangeConfigController {
 
     @Operation(summary = "下载异常文件")
     @PostMapping("/errorFile")
-    public void errorFile(@RequestBody DataExchangeConfigDTO request, jakarta.servlet.http.HttpServletResponse response) throws Exception {
+    public void errorFile(@RequestBody DataExchangeConfigDTO request, javax.servlet.http.HttpServletResponse response) throws Exception {
         TaskDataExchangeConfig config = configMapper.selectById(request.getId());
         if (config == null) {
             response.sendError(404, "配置不存在");
