@@ -38,7 +38,7 @@ public class OssAutoConfiguration {
     // ==================== S3 模式 ====================
 
     @Bean
-    @ConditionalOnMissingBean(AmazonS3.class)
+    @ConditionalOnMissingBean(OssClient.class)
     @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "s3")
     @ConditionalOnProperty(prefix = "ground.oss", name = "enable", havingValue = "true")
     public OssClient s3OssClient(AmazonS3 amazonS3) {
@@ -76,6 +76,7 @@ public class OssAutoConfiguration {
     // ==================== 本地文件模式（默认）====================
 
     @Bean
+    @ConditionalOnMissingBean(OssClient.class)
     @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "local", matchIfMissing = true)
     public OssClient localOssClient(LocalOssProperties localOssProperties) {
         log.info("初始化 OssClient（本地文件模式）");
