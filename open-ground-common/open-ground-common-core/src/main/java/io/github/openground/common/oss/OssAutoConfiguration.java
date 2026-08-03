@@ -9,6 +9,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -39,8 +40,7 @@ public class OssAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(OssClient.class)
-    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "s3")
-    @ConditionalOnProperty(prefix = "ground.oss", name = "enable", havingValue = "true")
+    @ConditionalOnExpression("${ground.oss.enable:false} && '${ground.oss.type:}'.equals('s3')")
     public OssClient s3OssClient(AmazonS3 amazonS3) {
         log.info("初始化 OssClient（S3协议）");
         return new S3OssClient(amazonS3);
@@ -48,8 +48,7 @@ public class OssAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AmazonS3.class)
-    @ConditionalOnProperty(prefix = "ground.oss", name = "type", havingValue = "s3")
-    @ConditionalOnProperty(prefix = "ground.oss", name = "enable", havingValue = "true")
+    @ConditionalOnExpression("${ground.oss.enable:false} && '${ground.oss.type:}'.equals('s3')")
     public AmazonS3 amazonS3(OssProperties ossProperties) {
         long nullSize = Stream.<String>builder()
                 .add(ossProperties.getEndpoint())

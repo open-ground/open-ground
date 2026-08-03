@@ -11,7 +11,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -336,7 +336,14 @@ public class LocalOssClient implements OssClient {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        ByteArrayResource fileResource = new ByteArrayResource(stream.readAllBytes()) {
+        // JDK 1.8 没有 InputStream.readAllBytes()（JDK 9+），手动读取全部字节
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int n;
+        while ((n = stream.read(chunk)) != -1) {
+            buffer.write(chunk, 0, n);
+        }
+        ByteArrayResource fileResource = new ByteArrayResource(buffer.toByteArray()) {
             @Override
             public String getFilename() {
                 return objectName;
