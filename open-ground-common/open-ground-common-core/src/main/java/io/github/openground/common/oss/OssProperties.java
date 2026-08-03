@@ -57,7 +57,7 @@ public class OssProperties {
     /**
      * 默认的存储桶名称
      */
-    private String bucketName;
+    private String bucketName = "default";
 
     /**
      * 最大线程数，默认： 100
